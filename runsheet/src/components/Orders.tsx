@@ -1,17 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-interface Order {
-  id: string;
-  customer: string;
-  status: 'pending' | 'in_transit' | 'delivered' | 'cancelled';
-  value: number;
-  items: string;
-  truckId?: string;
-  region: string;
-  createdAt: string;
-  deliveryEta: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-}
+import { apiService, Order } from '../services/api';
 
 export default function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -21,71 +9,20 @@ export default function Orders() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
-    // Mock data - replace with actual API call
-    setTimeout(() => {
-      setOrders([
-        {
-          id: 'ORD-001',
-          customer: 'Safaricom Ltd',
-          status: 'in_transit',
-          value: 125000,
-          items: 'Network equipment, cables',
-          truckId: 'GI-58A',
-          region: 'Nairobi',
-          createdAt: '2024-01-14T08:00:00Z',
-          deliveryEta: '2024-01-15T14:00:00Z',
-          priority: 'high'
-        },
-        {
-          id: 'ORD-002',
-          customer: 'Kenya Power',
-          status: 'pending',
-          value: 89000,
-          items: 'Electrical transformers',
-          region: 'Mombasa',
-          createdAt: '2024-01-15T09:30:00Z',
-          deliveryEta: '2024-01-16T16:00:00Z',
-          priority: 'medium'
-        },
-        {
-          id: 'ORD-003',
-          customer: 'Equity Bank',
-          status: 'delivered',
-          value: 45000,
-          items: 'ATM machines, security equipment',
-          truckId: 'MO-84A',
-          region: 'Kisumu',
-          createdAt: '2024-01-13T10:15:00Z',
-          deliveryEta: '2024-01-14T12:00:00Z',
-          priority: 'urgent'
-        },
-        {
-          id: 'ORD-004',
-          customer: 'Tusker Breweries',
-          status: 'in_transit',
-          value: 210000,
-          items: 'Brewing equipment, containers',
-          truckId: 'NA-45B',
-          region: 'Nakuru',
-          createdAt: '2024-01-14T11:20:00Z',
-          deliveryEta: '2024-01-15T18:00:00Z',
-          priority: 'medium'
-        },
-        {
-          id: 'ORD-005',
-          customer: 'Naivas Supermarket',
-          status: 'pending',
-          value: 67000,
-          items: 'Refrigeration units, shelving',
-          region: 'Eldoret',
-          createdAt: '2024-01-15T07:45:00Z',
-          deliveryEta: '2024-01-16T10:00:00Z',
-          priority: 'low'
-        }
-      ]);
-      setLoading(false);
-    }, 600);
+    loadOrdersData();
   }, []);
+
+  const loadOrdersData = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.getOrders();
+      setOrders(response.data);
+    } catch (error) {
+      console.error('Failed to load orders data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, FleetSummary } from '../types/api';
-import { mockApiService } from '../services/mockData';
+import { apiService } from '../services/api';
 
 interface FleetTrackingProps {
   onTruckSelect?: (truck: Truck) => void;
@@ -21,12 +21,12 @@ export default function FleetTracking({ onTruckSelect }: FleetTrackingProps) {
     try {
       setLoading(true);
       const [trucksResponse, summaryResponse] = await Promise.all([
-        mockApiService.getTrucks(),
-        mockApiService.getFleetSummary()
+        apiService.getTrucks(),
+        apiService.getFleetSummary()
       ]);
 
-      setTrucks((trucksResponse as any).data);
-      setFleetSummary((summaryResponse as any).data);
+      setTrucks(trucksResponse.data);
+      setFleetSummary(summaryResponse.data);
     } catch (error) {
       console.error('Failed to load fleet data:', error);
     } finally {

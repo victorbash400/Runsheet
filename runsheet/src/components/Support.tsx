@@ -1,16 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-interface SupportTicket {
-  id: string;
-  customer: string;
-  issue: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'open' | 'in_progress' | 'resolved' | 'closed';
-  createdAt: string;
-  assignedTo?: string;
-  relatedOrder?: string;
-}
+import { apiService, SupportTicket } from '../services/api';
 
 export default function Support() {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
@@ -21,63 +10,20 @@ export default function Support() {
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
 
   useEffect(() => {
-    // Mock data - replace with actual API call
-    setTimeout(() => {
-      setTickets([
-        {
-          id: 'TKT-001',
-          customer: 'Safaricom Ltd',
-          issue: 'Delivery Delay',
-          description: 'Order ORD-001 is running 3 hours behind schedule. Customer needs urgent update on ETA.',
-          priority: 'high',
-          status: 'open',
-          createdAt: '2024-01-15T09:30:00Z',
-          relatedOrder: 'ORD-001'
-        },
-        {
-          id: 'TKT-002',
-          customer: 'Kenya Power',
-          issue: 'Damaged Goods',
-          description: 'Electrical transformer arrived with visible damage. Customer requesting replacement.',
-          priority: 'urgent',
-          status: 'in_progress',
-          createdAt: '2024-01-15T11:15:00Z',
-          assignedTo: 'John Kamau',
-          relatedOrder: 'ORD-002'
-        },
-        {
-          id: 'TKT-003',
-          customer: 'Equity Bank',
-          issue: 'Invoice Query',
-          description: 'Customer questioning additional charges on delivery invoice.',
-          priority: 'medium',
-          status: 'resolved',
-          createdAt: '2024-01-14T14:20:00Z',
-          assignedTo: 'Mary Wanjiku'
-        },
-        {
-          id: 'TKT-004',
-          customer: 'Nakumatt Holdings',
-          issue: 'Missing Items',
-          description: 'Partial delivery received. 5 items missing from the shipment.',
-          priority: 'high',
-          status: 'open',
-          createdAt: '2024-01-15T13:45:00Z'
-        },
-        {
-          id: 'TKT-005',
-          customer: 'Tusker Breweries',
-          issue: 'Route Change Request',
-          description: 'Customer requesting alternative delivery route due to road closure.',
-          priority: 'medium',
-          status: 'in_progress',
-          createdAt: '2024-01-15T08:20:00Z',
-          assignedTo: 'Peter Omondi'
-        }
-      ]);
-      setLoading(false);
-    }, 700);
+    loadSupportData();
   }, []);
+
+  const loadSupportData = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.getSupportTickets();
+      setTickets(response.data);
+    } catch (error) {
+      console.error('Failed to load support tickets:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {

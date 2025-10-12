@@ -1,33 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiService, AnalyticsMetrics } from '../services/api';
 
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState('7d');
   const [selectedMetric, setSelectedMetric] = useState('delivery_performance');
+  const [metrics, setMetrics] = useState<AnalyticsMetrics | null>(null);
+  const [routePerformance, setRoutePerformance] = useState<any[]>([]);
+  const [delayCauses, setDelayCauses] = useState<any[]>([]);
+  const [regionalPerformance, setRegionalPerformance] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const metrics = {
-    delivery_performance: {
-      title: 'Delivery Performance',
-      value: '87.5%',
-      change: '+2.3%',
-      trend: 'up'
-    },
-    average_delay: {
-      title: 'Average Delay',
-      value: '2.4 hrs',
-      change: '-0.8 hrs',
-      trend: 'down'
-    },
-    fleet_utilization: {
-      title: 'Fleet Utilization',
-      value: '92%',
-      change: '+5%',
-      trend: 'up'
-    },
-    customer_satisfaction: {
-      title: 'Customer Satisfaction',
-      value: '4.2/5',
-      change: '+0.1',
-      trend: 'up'
+  useEffect(() => {
+    loadAnalyticsData();
+  }, [timeRange]);
+
+  const loadAnalyticsData = async () => {
+    try {
+      setLoading(true);
+      const [metricsResponse, routesResponse, delayResponse, regionalResponse] = await Promise.all([
+        apiService.getAnalyticsMetrics(timeRange),
+        apiService.getAnalyticsRoutePerformance(),
+        apiService.getAnalyticsDelayCauses(),
+        apiService.getAnalyticsRegionalPerformance()
+      ]);
+
+      setMetrics(metricsResponse.data);
+      setRoutePerformance(routesResponse.data);
+      setDelayCauses(delayResponse.data);
+      setRegionalPerformance(regionalResponse.data);
+    } catch (error) {
+      console.error('Failed to load analytics data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -56,9 +60,20 @@ export default function Analytics() {
       </div>
 
       <div className="p-4">
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+              <p className="mt-2 text-gray-600">Loading analytics...</p>
+            </div>
+          </div>
+        )}
+
         {/* Key Metrics - Compact Grid */}
-        <div className="grid grid-cols-4 gap-3 mb-6">
-          {Object.entries(metrics).map(([key, metric]) => (
+        {!loading && metrics && (
+          <div className="grid grid-cols-4 gap-3 mb-6">
+            {Object.entries(metrics).map(([key, metric]) => (
             <div
               key={key}
               className={`p-4 rounded-lg border cursor-pointer transition-all ${
@@ -84,111 +99,81 @@ export default function Analytics() {
           ))}
         </div>
 
+        )}
+
         {/* Chart Placeholder - More Compact */}
-        <div className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">
-            {metrics[selectedMetric as keyof typeof metrics].title} Trend
-          </h3>
-          <div className="h-48 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-white">
-            <div className="text-center">
-              <svg className="w-10 h-10 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <p className="text-sm text-gray-500">Interactive chart will be displayed here</p>
-              <p className="text-xs text-gray-400 mt-1">Showing {timeRange} data</p>
+        {!loading && metrics && (
+          <div className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">
+              {metrics[selectedMetric as keyof typeof metrics].title} Trend
+            </h3>
+            <div className="h-48 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-white">
+              <div className="text-center">
+                <svg className="w-10 h-10 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <p className="text-sm text-gray-500">Interactive chart will be displayed here</p>
+                <p className="text-xs text-gray-400 mt-1">Showing {timeRange} data</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Insights - Side by Side */}
-        <div className="grid grid-cols-2 gap-4">
+        {!loading && (
+          <div className="grid grid-cols-2 gap-4">
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <h3 className="text-sm font-semibold text-gray-900 mb-3">Top Performing Routes</h3>
             <div className="space-y-2">
-              <div className="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
-                <span className="text-sm text-gray-700">Nairobi → Mombasa</span>
-                <span className="text-sm font-semibold text-green-600">94%</span>
-              </div>
-              <div className="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
-                <span className="text-sm text-gray-700">Kisumu → Nakuru</span>
-                <span className="text-sm font-semibold text-green-600">91%</span>
-              </div>
-              <div className="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
-                <span className="text-sm text-gray-700">Eldoret → Nairobi</span>
-                <span className="text-sm font-semibold text-yellow-600">78%</span>
-              </div>
-              <div className="flex justify-between items-center py-1.5">
-                <span className="text-sm text-gray-700">Mombasa → Kisumu</span>
-                <span className="text-sm font-semibold text-yellow-600">75%</span>
-              </div>
+              {routePerformance.map((route, index) => (
+                <div key={index} className="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
+                  <span className="text-sm text-gray-700">{route.name}</span>
+                  <span className={`text-sm font-semibold ${route.performance >= 90 ? 'text-green-600' : route.performance >= 80 ? 'text-yellow-600' : 'text-red-600'}`}>
+                    {route.performance}%
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <h3 className="text-sm font-semibold text-gray-900 mb-3">Delay Causes</h3>
             <div className="space-y-2">
-              <div className="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
-                <span className="text-sm text-gray-700">Traffic Congestion</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-16 bg-gray-200 rounded-full h-1.5">
-                    <div className="bg-red-600 h-1.5 rounded-full" style={{ width: '45%' }}></div>
+              {delayCauses.map((cause, index) => (
+                <div key={index} className="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
+                  <span className="text-sm text-gray-700">{cause.name}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                      <div 
+                        className={`h-1.5 rounded-full ${cause.percentage >= 40 ? 'bg-red-600' : cause.percentage >= 25 ? 'bg-yellow-600' : cause.percentage >= 15 ? 'bg-orange-600' : 'bg-gray-600'}`}
+                        style={{ width: `${cause.percentage}%` }}
+                      ></div>
+                    </div>
+                    <span className={`text-sm font-semibold w-10 text-right ${cause.percentage >= 40 ? 'text-red-600' : cause.percentage >= 25 ? 'text-yellow-600' : cause.percentage >= 15 ? 'text-orange-600' : 'text-gray-600'}`}>
+                      {cause.percentage}%
+                    </span>
                   </div>
-                  <span className="text-sm font-semibold text-red-600 w-10 text-right">45%</span>
                 </div>
-              </div>
-              <div className="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
-                <span className="text-sm text-gray-700">Weather Conditions</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-16 bg-gray-200 rounded-full h-1.5">
-                    <div className="bg-yellow-600 h-1.5 rounded-full" style={{ width: '28%' }}></div>
-                  </div>
-                  <span className="text-sm font-semibold text-yellow-600 w-10 text-right">28%</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
-                <span className="text-sm text-gray-700">Vehicle Maintenance</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-16 bg-gray-200 rounded-full h-1.5">
-                    <div className="bg-orange-600 h-1.5 rounded-full" style={{ width: '18%' }}></div>
-                  </div>
-                  <span className="text-sm font-semibold text-orange-600 w-10 text-right">18%</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center py-1.5">
-                <span className="text-sm text-gray-700">Other</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-16 bg-gray-200 rounded-full h-1.5">
-                    <div className="bg-gray-600 h-1.5 rounded-full" style={{ width: '9%' }}></div>
-                  </div>
-                  <span className="text-sm font-semibold text-gray-600 w-10 text-right">9%</span>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
-        </div>
+          </div>
+        )}
 
         {/* Regional Performance */}
-        <div className="mt-4 bg-white border border-gray-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Regional Performance</h3>
-          <div className="grid grid-cols-4 gap-4">
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <div className="text-lg font-bold text-gray-900">Nairobi</div>
-              <div className="text-xs text-gray-600 mt-1">92% On Time</div>
-            </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <div className="text-lg font-bold text-gray-900">Mombasa</div>
-              <div className="text-xs text-gray-600 mt-1">88% On Time</div>
-            </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <div className="text-lg font-bold text-gray-900">Kisumu</div>
-              <div className="text-xs text-gray-600 mt-1">85% On Time</div>
-            </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <div className="text-lg font-bold text-gray-900">Eldoret</div>
-              <div className="text-xs text-gray-600 mt-1">81% On Time</div>
+        {!loading && (
+          <div className="mt-4 bg-white border border-gray-200 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Regional Performance</h3>
+            <div className="grid grid-cols-4 gap-4">
+              {regionalPerformance.map((region, index) => (
+                <div key={index} className="text-center p-3 bg-gray-50 rounded-lg">
+                  <div className="text-lg font-bold text-gray-900">{region.name}</div>
+                  <div className="text-xs text-gray-600 mt-1">{region.onTimePercentage}% On Time</div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

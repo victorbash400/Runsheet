@@ -1,7 +1,51 @@
 import { ApiResponse, Truck, FleetSummary, FleetFilters } from '../types/api';
 
-// Mock API base URL - replace with actual API endpoint
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+// API base URL - replace with actual API endpoint
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+// Types for other components
+export interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  location: string;
+  status: 'in_stock' | 'low_stock' | 'out_of_stock';
+  lastUpdated: string;
+}
+
+export interface Order {
+  id: string;
+  customer: string;
+  status: 'pending' | 'in_transit' | 'delivered' | 'cancelled';
+  value: number;
+  items: string;
+  truckId?: string;
+  region: string;
+  createdAt: string;
+  deliveryEta: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+}
+
+export interface SupportTicket {
+  id: string;
+  customer: string;
+  issue: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  createdAt: string;
+  assignedTo?: string;
+  relatedOrder?: string;
+}
+
+export interface AnalyticsMetrics {
+  delivery_performance: { title: string; value: string; change: string; trend: 'up' | 'down' };
+  average_delay: { title: string; value: string; change: string; trend: 'up' | 'down' };
+  fleet_utilization: { title: string; value: string; change: string; trend: 'up' | 'down' };
+  customer_satisfaction: { title: string; value: string; change: string; trend: 'up' | 'down' };
+}
 
 class ApiService {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
@@ -46,11 +90,110 @@ class ApiService {
     });
   }
 
+  // Inventory Management
+  async getInventory(): Promise<ApiResponse<InventoryItem[]>> {
+    return this.request<InventoryItem[]>('/inventory');
+  }
+
+  async getInventoryById(id: string): Promise<ApiResponse<InventoryItem>> {
+    return this.request<InventoryItem>(`/inventory/${id}`);
+  }
+
+  async updateInventoryItem(id: string, data: Partial<InventoryItem>): Promise<ApiResponse<InventoryItem>> {
+    return this.request<InventoryItem>(`/inventory/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Orders Management
+  async getOrders(): Promise<ApiResponse<Order[]>> {
+    return this.request<Order[]>('/orders');
+  }
+
+  async getOrderById(id: string): Promise<ApiResponse<Order>> {
+    return this.request<Order>(`/orders/${id}`);
+  }
+
+  async createOrder(order: Omit<Order, 'id' | 'createdAt'>): Promise<ApiResponse<Order>> {
+    return this.request<Order>('/orders', {
+      method: 'POST',
+      body: JSON.stringify(order),
+    });
+  }
+
+  async updateOrderStatus(id: string, status: string): Promise<ApiResponse<Order>> {
+    return this.request<Order>(`/orders/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  // Support Management
+  async getSupportTickets(): Promise<ApiResponse<SupportTicket[]>> {
+    return this.request<SupportTicket[]>('/support/tickets');
+  }
+
+  async getSupportTicketById(id: string): Promise<ApiResponse<SupportTicket>> {
+    return this.request<SupportTicket>(`/support/tickets/${id}`);
+  }
+
+  async createSupportTicket(ticket: Omit<SupportTicket, 'id' | 'createdAt'>): Promise<ApiResponse<SupportTicket>> {
+    return this.request<SupportTicket>('/support/tickets', {
+      method: 'POST',
+      body: JSON.stringify(ticket),
+    });
+  }
+
+  async updateSupportTicket(id: string, data: Partial<SupportTicket>): Promise<ApiResponse<SupportTicket>> {
+    return this.request<SupportTicket>(`/support/tickets/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Analytics
+  async getAnalyticsMetrics(timeRange: string = '7d'): Promise<ApiResponse<AnalyticsMetrics>> {
+    return this.request<AnalyticsMetrics>(`/analytics/metrics?timeRange=${timeRange}`);
+  }
+
+  async getAnalyticsRoutePerformance(): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>('/analytics/routes');
+  }
+
+  async getAnalyticsDelayCauses(): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>('/analytics/delay-causes');
+  }
+
+  async getAnalyticsRegionalPerformance(): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>('/analytics/regional');
+  }
+
+  // Data Upload
+  async uploadFromSheets(url: string, dataType: string): Promise<ApiResponse<{ recordCount: number }>> {
+    return this.request<{ recordCount: number }>('/data/upload/sheets', {
+      method: 'POST',
+      body: JSON.stringify({ url, dataType }),
+    });
+  }
+
+  async uploadCSV(file: File, dataType: string): Promise<ApiResponse<{ recordCount: number }>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('dataType', dataType);
+
+    return this.request<{ recordCount: number }>('/data/upload/csv', {
+      method: 'POST',
+      body: formData,
+      headers: {}, // Let browser set Content-Type for FormData
+    });
+  }
+
   // Real-time updates
   async subscribeToFleetUpdates(callback: (data: Truck[]) => void): Promise<() => void> {
     // WebSocket connection for real-time updates
     const ws = new WebSocket(`${API_BASE_URL.replace('http', 'ws')}/fleet/live`);
-    
+
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       callback(data);

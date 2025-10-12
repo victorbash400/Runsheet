@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiService } from '../services/api';
 
 interface UploadResult {
   status: 'success' | 'error';
@@ -22,13 +23,10 @@ export default function DataUpload() {
     setResult(null);
 
     try {
-      // Mock API call - replace with actual implementation
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simulate success
+      const response = await apiService.uploadFromSheets(sheetsUrl, dataType);
       setResult({
         status: 'success',
-        recordCount: Math.floor(Math.random() * 100) + 50,
+        recordCount: response.data.recordCount,
         dataType
       });
     } catch (error) {
@@ -49,12 +47,10 @@ export default function DataUpload() {
     setResult(null);
 
     try {
-      // Mock file processing
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      const response = await apiService.uploadCSV(file, dataType);
       setResult({
         status: 'success',
-        recordCount: Math.floor(Math.random() * 200) + 100,
+        recordCount: response.data.recordCount,
         dataType
       });
     } catch (error) {

@@ -5,6 +5,7 @@ from pydantic import BaseModel
 import json
 import logging
 from Agents.mainagent import LogisticsAgent
+from data_endpoints import router as data_router
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -24,6 +25,9 @@ app.add_middleware(
 
 # Initialize the logistics agent
 logistics_agent = LogisticsAgent()
+
+# Include data endpoints
+app.include_router(data_router)
 
 class ChatRequest(BaseModel):
     message: str

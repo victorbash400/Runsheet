@@ -1,15 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-interface InventoryItem {
-  id: string;
-  name: string;
-  category: string;
-  quantity: number;
-  unit: string;
-  location: string;
-  status: 'in_stock' | 'low_stock' | 'out_of_stock';
-  lastUpdated: string;
-}
+import { apiService, InventoryItem } from '../services/api';
 
 export default function Inventory() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -18,63 +8,20 @@ export default function Inventory() {
   const [filterCategory, setFilterCategory] = useState('all');
 
   useEffect(() => {
-    // Mock data - replace with actual API call
-    setTimeout(() => {
-      setInventory([
-        {
-          id: 'INV-001',
-          name: 'Diesel Fuel',
-          category: 'Fuel',
-          quantity: 15000,
-          unit: 'liters',
-          location: 'Nairobi Depot',
-          status: 'in_stock',
-          lastUpdated: '2024-01-15T10:30:00Z'
-        },
-        {
-          id: 'INV-002',
-          name: 'Spare Tires',
-          category: 'Parts',
-          quantity: 25,
-          unit: 'pieces',
-          location: 'Mombasa Warehouse',
-          status: 'low_stock',
-          lastUpdated: '2024-01-15T09:15:00Z'
-        },
-        {
-          id: 'INV-003',
-          name: 'Engine Oil',
-          category: 'Maintenance',
-          quantity: 0,
-          unit: 'bottles',
-          location: 'Kisumu Station',
-          status: 'out_of_stock',
-          lastUpdated: '2024-01-14T16:45:00Z'
-        },
-        {
-          id: 'INV-004',
-          name: 'Brake Pads',
-          category: 'Parts',
-          quantity: 120,
-          unit: 'sets',
-          location: 'Nairobi Depot',
-          status: 'in_stock',
-          lastUpdated: '2024-01-15T08:20:00Z'
-        },
-        {
-          id: 'INV-005',
-          name: 'Coolant Fluid',
-          category: 'Maintenance',
-          quantity: 8,
-          unit: 'bottles',
-          location: 'Mombasa Warehouse',
-          status: 'low_stock',
-          lastUpdated: '2024-01-15T11:00:00Z'
-        }
-      ]);
-      setLoading(false);
-    }, 800);
+    loadInventoryData();
   }, []);
+
+  const loadInventoryData = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.getInventory();
+      setInventory(response.data);
+    } catch (error) {
+      console.error('Failed to load inventory data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {

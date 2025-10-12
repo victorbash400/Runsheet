@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Trash2, X, Truck } from 'lucide-react';
+import { Send, Trash2, X, Truck, SendHorizontal } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface ChatMessage {
@@ -240,147 +240,147 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
       <style dangerouslySetInnerHTML={{ __html: scrollbarStyles }} />
       <div className={`fixed top-0 right-0 h-full w-96 bg-gradient-to-br from-gray-50 to-gray-100 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}>
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 p-4 flex-shrink-0">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">AI Assistant</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Powered by Gemini</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={clearChat}
-              className="text-gray-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
-              title="Clear chat"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-all duration-200"
-              title="Close chat"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Mode Toggle */}
-        <div className="flex bg-gray-100/80 rounded-xl p-1 shadow-inner">
-          <button
-            onClick={() => setMode('chat')}
-            className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${mode === 'chat'
-              ? 'bg-white text-blue-600 shadow-md'
-              : 'text-gray-600 hover:text-gray-900'
-              }`}
-          >
-            💬 Chat
-          </button>
-          <button
-            onClick={() => setMode('agent')}
-            className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${mode === 'agent'
-              ? 'bg-white text-blue-600 shadow-md'
-              : 'text-gray-600 hover:text-gray-900'
-              }`}
-          >
-            🤖 Agent
-          </button>
-        </div>
-      </div>
-
-      {/* Messages */}
-      <div 
-        className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 custom-scrollbar"
-        style={{
-          scrollbarWidth: 'thin',
-          scrollbarColor: '#d1d5db transparent'
-        }}
-      >
-        {messages.map(msg => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            {msg.role === 'assistant' ? (
-              <div className="max-w-[85%] space-y-2">
-                <div className="flex items-start space-x-2">
-                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shadow-md">
-                    <Truck className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm text-gray-800 leading-relaxed prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900 prose-ul:text-gray-800 prose-li:text-gray-800">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
-                      {msg.isStreaming && (
-                        <span className="inline-block w-1.5 h-4 ml-1 bg-blue-500 animate-pulse rounded" />
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-400 mt-1.5 ml-0.5">
-                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="max-w-[75%]">
-                <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 shadow-lg">
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {msg.content}
-                  </div>
-                </div>
-                <div className="text-xs text-gray-400 mt-1.5 text-right mr-1">
-                  {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-
-        {toolStatus && (
-          <div className="flex justify-center">
-            <div className="bg-amber-100 text-amber-800 px-4 py-2 rounded-full text-xs font-medium shadow-sm border border-amber-200">
-              ⚡ {toolStatus}
+        {/* Header */}
+        <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 p-4 flex-shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">AI Assistant</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Powered by Gemini</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={clearChat}
+                className="text-gray-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
+                title="Clear chat"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-all duration-200"
+                title="Close chat"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           </div>
-        )}
 
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input */}
-      <div className="bg-white/80 backdrop-blur-sm border-t border-gray-200/50 p-4 flex-shrink-0">
-        <div className="flex items-end space-x-2 mb-3">
-          <div className="flex-1 relative">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={
-                mode === 'chat'
-                  ? 'Ask me anything...'
-                  : 'Describe your analysis...'
-              }
-              disabled={isStreaming}
-              className="w-full px-4 py-3 pr-12 bg-white border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed shadow-sm"
-            />
+          {/* Mode Toggle */}
+          <div className="flex bg-gray-100/80 rounded-xl p-1 shadow-inner">
+            <button
+              onClick={() => setMode('chat')}
+              className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${mode === 'chat'
+                ? 'bg-white text-blue-600 shadow-md'
+                : 'text-gray-600 hover:text-gray-900'
+                }`}
+            >
+              💬 Chat
+            </button>
+            <button
+              onClick={() => setMode('agent')}
+              className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${mode === 'agent'
+                ? 'bg-white text-blue-600 shadow-md'
+                : 'text-gray-600 hover:text-gray-900'
+                }`}
+            >
+              🤖 Agent
+            </button>
           </div>
-          <button
-            onClick={handleSend}
-            disabled={isStreaming || !input.trim()}
-            className="flex-shrink-0 p-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-2xl hover:from-blue-700 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl disabled:shadow-none transform hover:scale-105 disabled:scale-100"
-          >
-            {isStreaming ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
-          </button>
         </div>
 
+        {/* Messages */}
+        <div
+          className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 custom-scrollbar"
+          style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#d1d5db transparent'
+          }}
+        >
+          {messages.map(msg => (
+            <div
+              key={msg.id}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              {msg.role === 'assistant' ? (
+                <div className="max-w-[85%] space-y-2">
+                  <div className="flex items-start space-x-2">
+                    <div className="flex-shrink-0 w-7 h-7 flex items-center justify-center">
+                      <Truck className="w-4 h-4 text-gray-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm text-gray-800 leading-relaxed prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900 prose-ul:text-gray-800 prose-li:text-gray-800">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        {msg.isStreaming && (
+                          <span className="inline-block w-1.5 h-4 ml-1 bg-blue-500 animate-pulse rounded" />
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1.5 ml-0.5">
+                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="max-w-[75%]">
+                  <div className="text-white rounded-2xl px-4 py-2.5 shadow-lg" style={{ backgroundColor: '#232323' }}>
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                      {msg.content}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1.5 text-right mr-1">
+                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
 
+          {toolStatus && (
+            <div className="flex justify-center">
+              <div className="bg-amber-100 text-amber-800 px-4 py-2 rounded-full text-xs font-medium shadow-sm border border-amber-200">
+                ⚡ {toolStatus}
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <div className="bg-white/80 backdrop-blur-sm border-t border-gray-200/50 p-4 flex-shrink-0">
+          <div className="mb-3">
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder={
+                  mode === 'chat'
+                    ? 'Ask me anything...'
+                    : 'Describe your analysis...'
+                }
+                disabled={isStreaming}
+                className="w-full px-4 py-3 pr-12 bg-white border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-100 text-sm transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed shadow-sm"
+              />
+              <button
+                onClick={handleSend}
+                disabled={isStreaming || !input.trim()}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                {isStreaming ? (
+                  <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <SendHorizontal className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </div>
+
+
+        </div>
       </div>
-    </div>
     </>
   );
 }
