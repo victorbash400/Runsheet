@@ -1,0 +1,6 @@
+strands-agents==1.8.0
+strands-agents-tools==0.2.7
+fastapi==0.118.0
+uvicorn
+google-generativeai
+python-dotenv

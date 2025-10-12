@@ -19,6 +19,10 @@ dist/
 .env.test.local
 .env.production.local
 
+# Google Cloud credentials
+ascendant-woods-*.json
+**/ascendant-woods-*.json
+
 # IDE and editor files
 .vscode/
 .idea/

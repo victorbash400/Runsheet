@@ -25,9 +25,10 @@ export default function Header({ onAIClick }: HeaderProps) {
           {/* Chat Button */}
           <button
             onClick={onAIClick}
-            className="p-2 rounded-lg transition-colors text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+            className="flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-800 hover:bg-gray-100"
           >
             <MessageCircle className="w-5 h-5" />
+            <span className="text-sm font-medium">Assistant</span>
           </button>
         </div>
       </div>

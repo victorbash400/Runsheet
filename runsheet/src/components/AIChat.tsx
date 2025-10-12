@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { Send, Trash2, X, Truck } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface ChatMessage {
   id: string;
@@ -16,6 +18,22 @@ interface AIChatProps {
 }
 
 export default function AIChat({ isOpen, onClose }: AIChatProps) {
+  // Custom scrollbar styles
+  const scrollbarStyles = `
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #d1d5db;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background-color: #9ca3af;
+    }
+  `;
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
@@ -30,6 +48,7 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
   const [mode, setMode] = useState<'chat' | 'agent'>('chat');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const processingRef = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -45,104 +64,91 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
     }
   }, [isOpen]);
 
-  const simulateStreamingResponse = async (userMessage: string) => {
-    // Mock streaming response based on user input
-    let response = '';
-    
-    if (userMessage.toLowerCase().includes('fleet') || userMessage.toLowerCase().includes('truck')) {
-      setToolStatus('🔍 Searching fleet data...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setToolStatus('');
-      response = `I found information about your fleet. Currently, you have 6 trucks in operation:
+  const streamChatResponse = async (userMessage: string) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          mode: mode
+        }),
+      });
 
-• **GI-58A**: On time, Kisumu → Mombasa route
-• **MO-84A**: Delayed by 2h 25m, Nakuru → Kisumu route  
-• **CE-57A**: Delayed by 25m, Kisumu → Mombasa route
-• **AL-94J**: Delayed, Malad → Bakaharif route
-• **PL-56A**: Delayed, Algia → Lukathing route
-• **DU-265**: Delayed by 7h 23m, Malaria → Pikom route
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-**Summary**: 1 truck on time, 5 trucks delayed. Would you like me to analyze the delay patterns or get more details about specific trucks?`;
-    } else if (userMessage.toLowerCase().includes('order') || userMessage.toLowerCase().includes('customer')) {
-      setToolStatus('🔍 Searching order database...');
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setToolStatus('');
-      response = `I found recent order activity:
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body reader available');
+      }
 
-• **ORD-001**: Safaricom Ltd - Network equipment (KSh 125,000) - In Transit
-• **ORD-002**: Kenya Power - Electrical transformers (KSh 89,000) - Pending  
-• **ORD-003**: Equity Bank - ATM machines (KSh 45,000) - Delivered
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-**Total Value**: KSh 259,000 across 3 active orders. The Safaricom order is currently on truck GI-58A and should arrive on schedule.`;
-    } else if (userMessage.toLowerCase().includes('delay') || userMessage.toLowerCase().includes('late')) {
-      setToolStatus('📊 Analyzing delay patterns...');
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      setToolStatus('');
-      response = `**Delay Analysis Results:**
+      while (true) {
+        const { done, value } = await reader.read();
 
-🚨 **Current Status**: 83% of trucks are experiencing delays (5 out of 6)
+        if (done) break;
 
-**Delay Breakdown**:
-• Average delay: 2.5 hours
-• Longest delay: 7h 23m (DU-265)
-• Most affected route: Kisumu → Mombasa (2 trucks delayed)
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
 
-**Recommendations**:
-1. Investigate route conditions on Kisumu-Mombasa corridor
-2. Contact drivers of severely delayed trucks (DU-265, MO-84A)
-3. Consider rerouting future shipments to avoid bottlenecks
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const jsonStr = line.slice(6).trim();
+              if (!jsonStr) continue;
 
-Would you like me to get real-time updates from specific trucks or analyze historical delay patterns?`;
-    } else if (userMessage.toLowerCase().includes('inventory') || userMessage.toLowerCase().includes('stock')) {
-      setToolStatus('📦 Checking inventory levels...');
-      await new Promise(resolve => setTimeout(resolve, 600));
-      setToolStatus('');
-      response = `**Inventory Status Summary:**
+              const data = JSON.parse(jsonStr);
 
-✅ **In Stock**: 1 item
-⚠️ **Low Stock**: 1 item  
-❌ **Out of Stock**: 1 item
+              if (data.error) {
+                throw new Error(data.error);
+              }
 
-**Details**:
-• Diesel Fuel: 15,000 liters (Nairobi Depot) - ✅ In Stock
-• Spare Tires: 25 pieces (Mombasa Warehouse) - ⚠️ Low Stock
-• Engine Oil: 0 bottles (Kisumu Station) - ❌ Out of Stock
+              if (data.type === 'text' && data.content) {
+                setMessages(prev => {
+                  const updated = [...prev];
+                  const lastMsg = updated[updated.length - 1];
+                  if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
+                    lastMsg.content += data.content;
+                  }
+                  return updated;
+                });
+              }
 
-**Action Required**: Reorder engine oil immediately and monitor spare tire levels.`;
-    } else {
-      response = `I understand you're asking about "${userMessage}". I can help you with:
-
-🚛 **Fleet Tracking**: "Show me fleet status" or "Which trucks are delayed?"
-📋 **Orders**: "Find orders for Safaricom" or "Show pending orders"  
-📊 **Analytics**: "Analyze delays this week" or "Show delivery performance"
-📦 **Inventory**: "Check stock levels" or "What's out of stock?"
-🎫 **Support**: "Find high priority tickets" or "Search customer issues"
-
-Try asking me something specific about your logistics operations!`;
-    }
-
-    // Simulate streaming by adding text gradually
-    const words = response.split(' ');
-    let currentText = '';
-    
-    for (let i = 0; i < words.length; i++) {
-      currentText += (i > 0 ? ' ' : '') + words[i];
-      
+              if (data.type === 'done') {
+                return;
+              }
+            } catch (parseError) {
+              console.warn('Failed to parse streaming data:', parseError);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Chat streaming error:', error);
       setMessages(prev => {
         const updated = [...prev];
         const lastMsg = updated[updated.length - 1];
-        if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
-          lastMsg.content = currentText;
+        if (lastMsg.role === 'assistant') {
+          lastMsg.content = `❌ Sorry, I encountered an error connecting to the AI service. Please make sure the backend is running on port 8000.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}`;
         }
         return updated;
       });
-      
-      await new Promise(resolve => setTimeout(resolve, 50));
     }
   };
 
   const handleSend = async () => {
-    if (!input.trim() || isStreaming) return;
+    if (!input.trim() || isStreaming || processingRef.current) return;
+
+    processingRef.current = true;
+    setIsStreaming(true);
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -153,7 +159,6 @@ Try asking me something specific about your logistics operations!`;
 
     setMessages(prev => [...prev, userMessage]);
     setInput('');
-    setIsStreaming(true);
 
     const assistantMessage: ChatMessage = {
       id: (Date.now() + 1).toString(),
@@ -166,7 +171,7 @@ Try asking me something specific about your logistics operations!`;
     setMessages(prev => [...prev, assistantMessage]);
 
     try {
-      await simulateStreamingResponse(userMessage.content);
+      await streamChatResponse(userMessage.content);
     } catch (error) {
       console.error('Chat error:', error);
       setMessages(prev => {
@@ -188,6 +193,7 @@ Try asking me something specific about your logistics operations!`;
         }
         return updated;
       });
+      processingRef.current = false;
     }
   };
 
@@ -198,147 +204,183 @@ Try asking me something specific about your logistics operations!`;
     }
   };
 
-  const clearChat = () => {
-    setMessages([{
-      id: '1',
-      role: 'assistant',
-      content: 'Chat cleared! How can I help you with your logistics operations?',
-      timestamp: new Date()
-    }]);
+  const clearChat = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/chat/clear', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      });
+
+      if (response.ok) {
+        setMessages([{
+          id: '1',
+          role: 'assistant',
+          content: 'Chat cleared! How can I help you with your logistics operations?',
+          timestamp: new Date()
+        }]);
+      } else {
+        console.error('Failed to clear chat on backend');
+      }
+    } catch (error) {
+      console.error('Error clearing chat:', error);
+      setMessages([{
+        id: '1',
+        role: 'assistant',
+        content: 'Chat cleared! How can I help you with your logistics operations?',
+        timestamp: new Date()
+      }]);
+    }
   };
 
   return (
-    <div className={`fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col rounded-l-3xl transition-transform duration-300 ease-in-out ${
-      isOpen ? 'translate-x-0' : 'translate-x-full'
-    }`}>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: scrollbarStyles }} />
+      <div className={`fixed top-0 right-0 h-full w-96 bg-gradient-to-br from-gray-50 to-gray-100 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}>
       {/* Header */}
-      <div className="border-b border-gray-200 p-3 flex-shrink-0">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-base font-semibold text-gray-900">AI Assistant</h2>
-          <div className="flex items-center space-x-1">
+      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 p-4 flex-shrink-0">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">AI Assistant</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Powered by Gemini</p>
+          </div>
+          <div className="flex items-center space-x-2">
             <button
               onClick={clearChat}
-              className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100"
+              className="text-gray-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
               title="Clear chat"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
+              <Trash2 className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100"
+              className="text-gray-400 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-all duration-200"
               title="Close chat"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
         {/* Mode Toggle */}
-        <div className="flex bg-gray-100 rounded-lg p-1">
+        <div className="flex bg-gray-100/80 rounded-xl p-1 shadow-inner">
           <button
             onClick={() => setMode('chat')}
-            className={`flex-1 px-2 py-1 text-xs font-medium rounded-md transition-colors ${
-              mode === 'chat'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-700 hover:bg-white hover:shadow-sm'
-            }`}
+            className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${mode === 'chat'
+              ? 'bg-white text-blue-600 shadow-md'
+              : 'text-gray-600 hover:text-gray-900'
+              }`}
           >
-            Chat
+            💬 Chat
           </button>
           <button
             onClick={() => setMode('agent')}
-            className={`flex-1 px-2 py-1 text-xs font-medium rounded-md transition-colors ${
-              mode === 'agent'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-700 hover:bg-white hover:shadow-sm'
-            }`}
+            className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${mode === 'agent'
+              ? 'bg-white text-blue-600 shadow-md'
+              : 'text-gray-600 hover:text-gray-900'
+              }`}
           >
-            Agent
+            🤖 Agent
           </button>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
+      <div 
+        className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 custom-scrollbar"
+        style={{
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#d1d5db transparent'
+        }}
+      >
         {messages.map(msg => (
           <div
             key={msg.id}
             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
-            <div
-              className={`max-w-[85%] rounded-lg px-4 py-2 ${
-                msg.role === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-900'
-              }`}
-            >
-              <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                {msg.content}
+            {msg.role === 'assistant' ? (
+              <div className="max-w-[85%] space-y-2">
+                <div className="flex items-start space-x-2">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shadow-md">
+                    <Truck className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm text-gray-800 leading-relaxed prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900 prose-ul:text-gray-800 prose-li:text-gray-800">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      {msg.isStreaming && (
+                        <span className="inline-block w-1.5 h-4 ml-1 bg-blue-500 animate-pulse rounded" />
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1.5 ml-0.5">
+                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
               </div>
-              {msg.isStreaming && (
-                <span className="inline-block w-2 h-4 ml-1 bg-current animate-pulse" />
-              )}
-              <div className="text-xs opacity-70 mt-1">
-                {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            ) : (
+              <div className="max-w-[75%]">
+                <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 shadow-lg">
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {msg.content}
+                  </div>
+                </div>
+                <div className="text-xs text-gray-400 mt-1.5 text-right mr-1">
+                  {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         ))}
-        
+
         {toolStatus && (
           <div className="flex justify-center">
-            <div className="bg-yellow-100 text-yellow-800 px-3 py-2 rounded-lg text-sm font-medium">
-              {toolStatus}
+            <div className="bg-amber-100 text-amber-800 px-4 py-2 rounded-full text-xs font-medium shadow-sm border border-amber-200">
+              ⚡ {toolStatus}
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <div className="border-t border-gray-200 p-3 flex-shrink-0">
-        <div className="flex space-x-2 mb-2">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={
-              mode === 'chat'
-                ? 'Ask about fleet, orders, delays...'
-                : 'Describe analysis needed...'
-            }
-            disabled={isStreaming}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-          />
+      <div className="bg-white/80 backdrop-blur-sm border-t border-gray-200/50 p-4 flex-shrink-0">
+        <div className="flex items-end space-x-2 mb-3">
+          <div className="flex-1 relative">
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={
+                mode === 'chat'
+                  ? 'Ask me anything...'
+                  : 'Describe your analysis...'
+              }
+              disabled={isStreaming}
+              className="w-full px-4 py-3 pr-12 bg-white border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed shadow-sm"
+            />
+          </div>
           <button
             onClick={handleSend}
             disabled={isStreaming || !input.trim()}
-            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors text-sm"
+            className="flex-shrink-0 p-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-2xl hover:from-blue-700 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl disabled:shadow-none transform hover:scale-105 disabled:scale-100"
           >
             {isStreaming ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
+              <Send className="w-5 h-5" />
             )}
           </button>
         </div>
-        
-        <div className="flex items-center space-x-1 justify-center">
-          <div className={`w-2 h-2 rounded-full ${isStreaming ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
-          <span className="text-xs text-gray-500">
-            {isStreaming ? 'Thinking...' : 'Ready'}
-          </span>
-        </div>
+
+
       </div>
     </div>
+    </>
   );
 }
