@@ -4,8 +4,10 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import json
 import logging
+import asyncio
 from Agents.mainagent import LogisticsAgent
 from data_endpoints import router as data_router
+from services.data_seeder import data_seeder
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +30,18 @@ logistics_agent = LogisticsAgent()
 
 # Include data endpoints
 app.include_router(data_router)
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize Elasticsearch data on startup"""
+    try:
+        logger.info("🚀 Starting Runsheet Logistics API...")
+        logger.info("🔄 Seeding Elasticsearch with initial data...")
+        await data_seeder.seed_all_data()
+        logger.info("✅ Elasticsearch data seeding completed!")
+    except Exception as e:
+        logger.error(f"❌ Failed to seed Elasticsearch data: {e}")
+        # Don't fail startup, just log the error
 
 class ChatRequest(BaseModel):
     message: str

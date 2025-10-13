@@ -1,6 +1,6 @@
 """
 Data API endpoints for Runsheet Logistics Platform
-Provides mock data endpoints that can later be replaced with Elasticsearch
+Provides Elasticsearch-powered data endpoints
 """
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
@@ -8,6 +8,10 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 import random
+import logging
+from services.elasticsearch_service import elasticsearch_service
+
+logger = logging.getLogger(__name__)
 
 # Create router for data endpoints
 router = APIRouter(prefix="/api")
@@ -397,73 +401,208 @@ def get_mock_support_tickets():
 # Fleet Management
 @router.get("/fleet/summary")
 async def get_fleet_summary():
-    trucks = get_mock_trucks()
-    summary = FleetSummary(
-        totalTrucks=len(trucks),
-        activeTrucks=len([t for t in trucks if t.status in ['on_time', 'delayed']]),
-        onTimeTrucks=len([t for t in trucks if t.status == 'on_time']),
-        delayedTrucks=len([t for t in trucks if t.status == 'delayed']),
-        averageDelay=45
-    )
-    
-    return {
-        "data": summary.dict(),
-        "success": True,
-        "timestamp": datetime.now().isoformat()
-    }
+    try:
+        trucks = await elasticsearch_service.get_all_documents("trucks")
+        
+        summary = FleetSummary(
+            totalTrucks=len(trucks),
+            activeTrucks=len([t for t in trucks if t.get("status") in ['on_time', 'delayed']]),
+            onTimeTrucks=len([t for t in trucks if t.get("status") == 'on_time']),
+            delayedTrucks=len([t for t in trucks if t.get("status") == 'delayed']),
+            averageDelay=45
+        )
+        
+        return {
+            "data": summary.dict(),
+            "success": True,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting fleet summary: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/fleet/trucks")
 async def get_trucks():
-    trucks = get_mock_trucks()
-    return {
-        "data": [truck.dict() for truck in trucks],
-        "success": True,
-        "timestamp": datetime.now().isoformat()
-    }
+    try:
+        trucks = await elasticsearch_service.get_all_documents("trucks")
+        
+        # Convert to Truck model format for consistency
+        formatted_trucks = []
+        for truck in trucks:
+            # Build route with origin and destination for frontend compatibility
+            route_data = truck.get("route", {})
+            current_location = truck.get("current_location", {})
+            destination = truck.get("destination", {})
+            
+            formatted_route = {
+                "id": route_data.get("id", ""),
+                "origin": current_location,
+                "destination": destination,
+                "waypoints": [],
+                "distance": route_data.get("distance", 0),
+                "estimatedDuration": route_data.get("estimated_duration", 0),
+                "actualDuration": route_data.get("actual_duration")
+            }
+            
+            formatted_truck = {
+                "id": truck.get("truck_id"),
+                "plateNumber": truck.get("plate_number"),
+                "driverId": truck.get("driver_id"),
+                "driverName": truck.get("driver_name"),
+                "currentLocation": current_location,
+                "destination": destination,
+                "route": formatted_route,
+                "status": truck.get("status"),
+                "estimatedArrival": truck.get("estimated_arrival"),
+                "lastUpdate": truck.get("last_update"),
+                "cargo": truck.get("cargo")
+            }
+            formatted_trucks.append(formatted_truck)
+        
+        return {
+            "data": formatted_trucks,
+            "success": True,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting trucks: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/fleet/trucks/{truck_id}")
 async def get_truck_by_id(truck_id: str):
-    trucks = get_mock_trucks()
-    truck = next((t for t in trucks if t.id == truck_id), None)
-    
-    if not truck:
+    try:
+        truck = await elasticsearch_service.get_document("trucks", truck_id)
+        
+        # Convert to Truck model format
+        route_data = truck.get("route", {})
+        current_location = truck.get("current_location", {})
+        destination = truck.get("destination", {})
+        
+        formatted_route = {
+            "id": route_data.get("id", ""),
+            "origin": current_location,
+            "destination": destination,
+            "waypoints": [],
+            "distance": route_data.get("distance", 0),
+            "estimatedDuration": route_data.get("estimated_duration", 0),
+            "actualDuration": route_data.get("actual_duration")
+        }
+        
+        formatted_truck = {
+            "id": truck.get("truck_id"),
+            "plateNumber": truck.get("plate_number"),
+            "driverId": truck.get("driver_id"),
+            "driverName": truck.get("driver_name"),
+            "currentLocation": current_location,
+            "destination": destination,
+            "route": formatted_route,
+            "status": truck.get("status"),
+            "estimatedArrival": truck.get("estimated_arrival"),
+            "lastUpdate": truck.get("last_update"),
+            "cargo": truck.get("cargo")
+        }
+        
+        return {
+            "data": formatted_truck,
+            "success": True,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting truck {truck_id}: {e}")
         raise HTTPException(status_code=404, detail="Truck not found")
-    
-    return {
-        "data": truck.dict(),
-        "success": True,
-        "timestamp": datetime.now().isoformat()
-    }
 
 # Inventory Management
 @router.get("/inventory")
 async def get_inventory():
-    inventory = get_mock_inventory()
-    return {
-        "data": [item.dict() for item in inventory],
-        "success": True,
-        "timestamp": datetime.now().isoformat()
-    }
+    try:
+        inventory = await elasticsearch_service.get_all_documents("inventory")
+        
+        # Convert to InventoryItem model format
+        formatted_inventory = []
+        for item in inventory:
+            formatted_item = {
+                "id": item.get("item_id"),
+                "name": item.get("name"),
+                "category": item.get("category"),
+                "quantity": item.get("quantity"),
+                "unit": item.get("unit"),
+                "location": item.get("location"),
+                "status": item.get("status"),
+                "lastUpdated": item.get("last_updated")
+            }
+            formatted_inventory.append(formatted_item)
+        
+        return {
+            "data": formatted_inventory,
+            "success": True,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting inventory: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Orders Management
 @router.get("/orders")
 async def get_orders():
-    orders = get_mock_orders()
-    return {
-        "data": [order.dict() for order in orders],
-        "success": True,
-        "timestamp": datetime.now().isoformat()
-    }
+    try:
+        orders = await elasticsearch_service.get_all_documents("orders")
+        
+        # Convert to Order model format
+        formatted_orders = []
+        for order in orders:
+            formatted_order = {
+                "id": order.get("order_id"),
+                "customer": order.get("customer"),
+                "status": order.get("status"),
+                "value": order.get("value"),
+                "items": order.get("items"),
+                "truckId": order.get("truck_id"),
+                "region": order.get("region"),
+                "createdAt": order.get("created_at"),
+                "deliveryEta": order.get("delivery_eta"),
+                "priority": order.get("priority")
+            }
+            formatted_orders.append(formatted_order)
+        
+        return {
+            "data": formatted_orders,
+            "success": True,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting orders: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Support Management
 @router.get("/support/tickets")
 async def get_support_tickets():
-    tickets = get_mock_support_tickets()
-    return {
-        "data": [ticket.dict() for ticket in tickets],
-        "success": True,
-        "timestamp": datetime.now().isoformat()
-    }
+    try:
+        tickets = await elasticsearch_service.get_all_documents("support_tickets")
+        
+        # Convert to SupportTicket model format
+        formatted_tickets = []
+        for ticket in tickets:
+            formatted_ticket = {
+                "id": ticket.get("ticket_id"),
+                "customer": ticket.get("customer"),
+                "issue": ticket.get("issue"),
+                "description": ticket.get("description"),
+                "priority": ticket.get("priority"),
+                "status": ticket.get("status"),
+                "createdAt": ticket.get("created_at"),
+                "assignedTo": ticket.get("assigned_to"),
+                "relatedOrder": ticket.get("related_order")
+            }
+            formatted_tickets.append(formatted_ticket)
+        
+        return {
+            "data": formatted_tickets,
+            "success": True,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting support tickets: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Analytics
 @router.get("/analytics/metrics")
@@ -545,6 +684,97 @@ async def get_regional_performance():
         "success": True,
         "timestamp": datetime.now().isoformat()
     }
+
+# Semantic Search
+@router.get("/search")
+async def semantic_search(q: str, index: str = "orders", limit: int = 10):
+    """
+    Perform semantic search across different indices
+    """
+    try:
+        if index == "orders":
+            results = await elasticsearch_service.semantic_search(
+                "orders", q, ["items", "customer"], limit
+            )
+            # Format results
+            formatted_results = []
+            for result in results:
+                formatted_result = {
+                    "id": result.get("order_id"),
+                    "customer": result.get("customer"),
+                    "status": result.get("status"),
+                    "value": result.get("value"),
+                    "items": result.get("items"),
+                    "region": result.get("region"),
+                    "priority": result.get("priority")
+                }
+                formatted_results.append(formatted_result)
+            
+        elif index == "trucks":
+            results = await elasticsearch_service.semantic_search(
+                "trucks", q, ["cargo.description", "driver_name"], limit
+            )
+            formatted_results = []
+            for result in results:
+                formatted_result = {
+                    "id": result.get("truck_id"),
+                    "plateNumber": result.get("plate_number"),
+                    "driverName": result.get("driver_name"),
+                    "status": result.get("status"),
+                    "cargo": result.get("cargo")
+                }
+                formatted_results.append(formatted_result)
+                
+        elif index == "support_tickets":
+            results = await elasticsearch_service.semantic_search(
+                "support_tickets", q, ["issue", "description"], limit
+            )
+            formatted_results = []
+            for result in results:
+                formatted_result = {
+                    "id": result.get("ticket_id"),
+                    "customer": result.get("customer"),
+                    "issue": result.get("issue"),
+                    "description": result.get("description"),
+                    "priority": result.get("priority"),
+                    "status": result.get("status")
+                }
+                formatted_results.append(formatted_result)
+        else:
+            raise HTTPException(status_code=400, detail="Invalid index. Use: orders, trucks, or support_tickets")
+        
+        return {
+            "data": formatted_results,
+            "query": q,
+            "index": index,
+            "success": True,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error in semantic search: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Data Management
+@router.post("/data/cleanup")
+async def cleanup_duplicate_data():
+    """Clean up duplicate data in Elasticsearch"""
+    try:
+        from services.data_seeder import data_seeder
+        
+        # Clear all existing data
+        await data_seeder.clear_all_data()
+        
+        # Reseed with fresh data
+        await data_seeder.seed_all_data(force=True)
+        
+        return {
+            "message": "Data cleanup and reseed completed successfully",
+            "success": True,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error during data cleanup: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Data Upload
 @router.post("/data/upload/sheets")
