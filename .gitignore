@@ -14,10 +14,17 @@ dist/
 
 # Environment variables
 .env
+.env.*
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# API keys and secrets
+**/example.md
+**/*api*key*
+**/*secret*
+**/*credential*
 
 # Google Cloud credentials
 ascendant-woods-*.json
