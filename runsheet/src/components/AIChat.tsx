@@ -10,6 +10,7 @@ interface ChatMessage {
   content: string;
   timestamp: Date;
   isStreaming?: boolean;
+  toolUsed?: string;
 }
 
 interface AIChatProps {
@@ -120,6 +121,24 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
                   }
                   return updated;
                 });
+              }
+
+              if (data.type === 'tool' && data.tool_name) {
+                // Tool is being used
+                setMessages(prev => {
+                  const updated = [...prev];
+                  const lastMsg = updated[updated.length - 1];
+                  if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
+                    lastMsg.toolUsed = data.tool_name;
+                  }
+                  return updated;
+                });
+                setToolStatus(data.tool_name);
+              }
+
+              if (data.type === 'tool_result') {
+                // Tool finished, clear the status
+                setToolStatus('');
               }
 
               if (data.type === 'done') {
@@ -314,6 +333,20 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
                           <span className="inline-block w-1.5 h-4 ml-1 animate-pulse rounded" style={{ backgroundColor: '#232323' }} />
                         )}
                       </div>
+
+                      {/* Tool Usage Indicator */}
+                      {msg.toolUsed && (
+                        <div className="inline-block mt-1">
+                          <span className="inline-block px-2 py-1 text-xs text-white rounded border" style={{ backgroundColor: '#232323', borderColor: '#232323' }}>
+                            {msg.toolUsed === 'search_orders' && 'search_orders'}
+                            {msg.toolUsed === 'search_fleet_data' && 'search_fleet_data'}
+                            {msg.toolUsed === 'search_support_tickets' && 'search_support_tickets'}
+                            {msg.toolUsed === 'get_fleet_summary' && 'get_fleet_summary'}
+                            {!['search_orders', 'search_fleet_data', 'search_support_tickets', 'get_fleet_summary'].includes(msg.toolUsed) && msg.toolUsed}
+                          </span>
+                        </div>
+                      )}
+
                       <div className="text-xs text-gray-400 mt-1.5 ml-0.5">
                         {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
@@ -335,13 +368,7 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
             </div>
           ))}
 
-          {toolStatus && (
-            <div className="flex justify-center">
-              <div className="bg-amber-100 text-amber-800 px-4 py-2 rounded-full text-xs font-medium shadow-sm border border-amber-200">
-                ⚡ {toolStatus}
-              </div>
-            </div>
-          )}
+
 
           <div ref={messagesEndRef} />
         </div>

@@ -76,6 +76,14 @@ async def chat_endpoint(request: ChatRequest):
                             text = event["data"]
                             if text:
                                 yield f"data: {json.dumps({'type': 'text', 'content': text})}\n\n"
+                        elif "current_tool_use" in event:
+                            # Tool is being invoked
+                            tool_info = event["current_tool_use"]
+                            yield f"data: {json.dumps({'type': 'tool', 'tool_name': tool_info.get('name', ''), 'tool_input': tool_info.get('input', {})})}\n\n"
+                        elif "current_tool_result" in event:
+                            # Tool result received
+                            tool_result = event["current_tool_result"]
+                            yield f"data: {json.dumps({'type': 'tool_result', 'tool_name': tool_result.get('name', ''), 'tool_output': tool_result.get('output', '')})}\n\n"
                         elif event.get('event') == 'messageStop' or 'result' in event:
                             # Message is complete
                             yield f"data: {json.dumps({'type': 'done'})}\n\n"
