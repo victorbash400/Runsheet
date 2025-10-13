@@ -514,46 +514,157 @@ class DataSeeder:
         logger.info("✅ Seeded support tickets data")
     
     async def seed_analytics_events(self):
-        """Seed analytics events data"""
-        events_data = [
+        """Seed analytics events data with time-series data for charts"""
+        import random
+        from datetime import datetime, timedelta
+        
+        events_data = []
+        base_time = datetime.now()
+        
+        # Generate time-series data for the last 30 days
+        for days_back in range(30, 0, -1):
+            event_time = base_time - timedelta(days=days_back)
+            
+            # Daily performance metrics
+            events_data.append({
+                "event_id": f"PERF-{days_back:03d}",
+                "event_type": "daily_performance",
+                "timestamp": event_time.isoformat() + "Z",
+                "region": "All",
+                "metrics": {
+                    "delivery_performance_pct": round(85 + random.uniform(-10, 10), 1),
+                    "average_delay_minutes": round(120 + random.uniform(-60, 120), 1),
+                    "fleet_utilization_pct": round(90 + random.uniform(-15, 10), 1),
+                    "customer_satisfaction": round(4.0 + random.uniform(-0.5, 1.0), 1),
+                    "total_deliveries": random.randint(15, 35),
+                    "on_time_deliveries": random.randint(12, 30)
+                }
+            })
+            
+            # Route performance events
+            routes = [
+                ("Nairobi → Mombasa", "nairobi-mombasa"),
+                ("Kisumu → Nakuru", "kisumu-nakuru"), 
+                ("Eldoret → Nairobi", "eldoret-nairobi"),
+                ("Mombasa → Kisumu", "mombasa-kisumu")
+            ]
+            
+            for route_name, route_id in routes:
+                events_data.append({
+                    "event_id": f"ROUTE-{route_id}-{days_back:03d}",
+                    "event_type": "route_performance",
+                    "timestamp": event_time.isoformat() + "Z",
+                    "route_name": route_name,
+                    "route_id": route_id,
+                    "metrics": {
+                        "performance_pct": round(75 + random.uniform(-15, 20), 1),
+                        "avg_delivery_time": round(300 + random.uniform(-120, 180), 1),
+                        "delay_incidents": random.randint(0, 5),
+                        "completed_trips": random.randint(2, 8)
+                    }
+                })
+        
+        # Generate hourly data for the last 24 hours
+        for hours_back in range(24, 0, -1):
+            event_time = base_time - timedelta(hours=hours_back)
+            
+            events_data.append({
+                "event_id": f"HOURLY-{hours_back:03d}",
+                "event_type": "hourly_metrics",
+                "timestamp": event_time.isoformat() + "Z",
+                "region": "All",
+                "metrics": {
+                    "active_trucks": random.randint(4, 8),
+                    "delivery_performance_pct": round(85 + random.uniform(-15, 15), 1),
+                    "average_delay_minutes": round(90 + random.uniform(-60, 120), 1),
+                    "fleet_utilization_pct": round(88 + random.uniform(-20, 12), 1)
+                }
+            })
+        
+        # Delay cause events
+        delay_causes = [
+            ("Traffic Congestion", 45),
+            ("Weather Conditions", 28), 
+            ("Vehicle Maintenance", 18),
+            ("Loading Delays", 9)
+        ]
+        
+        for cause, base_pct in delay_causes:
+            events_data.append({
+                "event_id": f"DELAY-{cause.replace(' ', '-').lower()}",
+                "event_type": "delay_cause_analysis",
+                "timestamp": base_time.isoformat() + "Z",
+                "delay_cause": cause,
+                "metrics": {
+                    "percentage": round(base_pct + random.uniform(-5, 5), 1),
+                    "incident_count": random.randint(5, 25),
+                    "avg_delay_minutes": round(60 + random.uniform(-30, 90), 1)
+                }
+            })
+        
+        # Regional performance
+        regions = ["Nairobi", "Mombasa", "Kisumu", "Eldoret"]
+        for region in regions:
+            events_data.append({
+                "event_id": f"REGIONAL-{region.lower()}",
+                "event_type": "regional_performance",
+                "timestamp": base_time.isoformat() + "Z",
+                "region": region,
+                "metrics": {
+                    "on_time_percentage": round(80 + random.uniform(-15, 15), 1),
+                    "total_deliveries": random.randint(20, 50),
+                    "avg_delivery_time": round(240 + random.uniform(-60, 120), 1),
+                    "customer_rating": round(3.8 + random.uniform(-0.3, 1.2), 1)
+                }
+            })
+        
+        # Individual delivery events for more granular data
+        delivery_events = [
             {
-                "event_id": "EVT-001",
+                "event_id": "DEL-001",
                 "event_type": "delivery_completed",
                 "timestamp": "2024-01-14T11:45:00Z",
                 "truck_id": "MO-84A",
                 "order_id": "ORD-003",
                 "region": "Kisumu",
                 "metrics": {
-                    "delivery_time": 385,
+                    "delivery_time_minutes": 385,
                     "delay_minutes": -15,
-                    "distance_km": 285.5
+                    "distance_km": 285.5,
+                    "fuel_consumed_liters": 45.2,
+                    "customer_rating": 4.5
                 }
             },
             {
-                "event_id": "EVT-002",
-                "event_type": "route_started",
+                "event_id": "DEL-002", 
+                "event_type": "delivery_started",
                 "timestamp": "2024-01-15T08:00:00Z",
                 "truck_id": "GI-58A",
                 "order_id": "ORD-001",
                 "region": "Central",
                 "metrics": {
-                    "distance_km": 580.0
+                    "planned_distance_km": 580.0,
+                    "estimated_duration_minutes": 480
                 }
             },
             {
-                "event_id": "EVT-003",
+                "event_id": "DEL-003",
                 "event_type": "delay_reported",
                 "timestamp": "2024-01-15T12:00:00Z",
                 "truck_id": "CE-57A",
                 "region": "Nyanza",
+                "delay_cause": "Traffic Congestion",
                 "metrics": {
-                    "delay_minutes": 180
+                    "delay_minutes": 180,
+                    "expected_delay_duration": 120
                 }
             }
         ]
         
+        events_data.extend(delivery_events)
+        
         await self.es_service.bulk_index_documents("analytics_events", events_data)
-        logger.info("✅ Seeded analytics events data")
+        logger.info(f"✅ Seeded {len(events_data)} analytics events with time-series data")
 
 # Global instance
 data_seeder = DataSeeder()

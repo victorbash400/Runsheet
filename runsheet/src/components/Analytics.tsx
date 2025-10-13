@@ -1,6 +1,57 @@
 import React, { useState, useEffect } from 'react';
 import { apiService, AnalyticsMetrics } from '../services/api';
 
+// Google Charts component
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
+
+
+interface GoogleChartProps {
+  chartType: string;
+  data: any[];
+  options: any;
+  width?: string;
+  height?: string;
+}
+
+function GoogleChart({ chartType, data, options, width = '100%', height = '300px' }: GoogleChartProps) {
+  const chartRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.google?.visualization) {
+      drawChart();
+    } else {
+      loadGoogleCharts();
+    }
+  }, [data, chartType, options]);
+
+  const loadGoogleCharts = () => {
+    if (typeof window === 'undefined') return;
+
+    const script = document.createElement('script');
+    script.src = 'https://www.gstatic.com/charts/loader.js';
+    script.onload = () => {
+      window.google.charts.load('current', { packages: ['corechart', 'gauge'] });
+      window.google.charts.setOnLoadCallback(drawChart);
+    };
+    document.head.appendChild(script);
+  };
+
+  const drawChart = () => {
+    if (!chartRef.current || !window.google?.visualization) return;
+
+    const dataTable = window.google.visualization.arrayToDataTable(data);
+    const chart = new window.google.visualization[chartType](chartRef.current);
+    chart.draw(dataTable, options);
+  };
+
+  return <div ref={chartRef} style={{ width, height }} />;
+}
+
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState('7d');
   const [selectedMetric, setSelectedMetric] = useState('delivery_performance');
@@ -9,6 +60,7 @@ export default function Analytics() {
   const [delayCauses, setDelayCauses] = useState<any[]>([]);
   const [regionalPerformance, setRegionalPerformance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState<any>(null);
 
   useEffect(() => {
     loadAnalyticsData();
@@ -28,10 +80,95 @@ export default function Analytics() {
       setRoutePerformance(routesResponse.data);
       setDelayCauses(delayResponse.data);
       setRegionalPerformance(regionalResponse.data);
+
+      // Prepare chart data based on selected metric and time range
+      prepareChartData(selectedMetric, timeRange);
     } catch (error) {
       console.error('Failed to load analytics data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const prepareChartData = async (metric: string, range: string) => {
+    const metricFieldMap = {
+      delivery_performance: 'delivery_performance_pct',
+      average_delay: 'average_delay_minutes',
+      fleet_utilization: 'fleet_utilization_pct',
+      customer_satisfaction: 'customer_satisfaction'
+    };
+
+    const metricField = metricFieldMap[metric as keyof typeof metricFieldMap];
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/analytics/time-series?metric=${metricField}&timeRange=${range}`);
+    const result = await response.json();
+
+    setChartData({
+      timeSeriesData: [
+        ['Time', getMetricLabel(metric)],
+        ...result.data.map((point: any) => [new Date(point.timestamp).toLocaleDateString(), point.value])
+      ],
+      pieChartData: [
+        ['Cause', 'Percentage'],
+        ...delayCauses.map(cause => [cause.name, cause.percentage])
+      ],
+      barChartData: [
+        ['Route', 'Performance'],
+        ...routePerformance.map(route => [route.name, route.performance])
+      ]
+    });
+  };
+
+
+
+  const getMetricLabel = (metric: string) => {
+    const labels = {
+      delivery_performance: 'Performance (%)',
+      average_delay: 'Delay (minutes)',
+      fleet_utilization: 'Utilization (%)',
+      customer_satisfaction: 'Rating (1-5)'
+    };
+    return labels[metric as keyof typeof labels] || 'Value';
+  };
+
+  // Update chart data when metric or time range changes
+  useEffect(() => {
+    if (metrics && selectedMetric) {
+      prepareChartData(selectedMetric, timeRange);
+    }
+  }, [selectedMetric, timeRange, metrics, delayCauses, routePerformance]);
+
+  const getChartOptions = (type: string) => {
+    const baseOptions = {
+      backgroundColor: 'transparent',
+      legend: { position: 'bottom', textStyle: { fontSize: 12 } },
+      titleTextStyle: { fontSize: 14, bold: true },
+      hAxis: { textStyle: { fontSize: 11 } },
+      vAxis: { textStyle: { fontSize: 11 } }
+    };
+
+    switch (type) {
+      case 'line':
+        return {
+          ...baseOptions,
+          curveType: 'function',
+          colors: ['#3B82F6'],
+          pointSize: 4,
+          lineWidth: 2
+        };
+      case 'pie':
+        return {
+          ...baseOptions,
+          colors: ['#EF4444', '#F59E0B', '#10B981', '#6B7280'],
+          pieSliceText: 'percentage'
+        };
+      case 'bar':
+        return {
+          ...baseOptions,
+          colors: ['#3B82F6'],
+          bar: { groupWidth: '75%' }
+        };
+      default:
+        return baseOptions;
     }
   };
 
@@ -74,106 +211,184 @@ export default function Analytics() {
         {!loading && metrics && (
           <div className="grid grid-cols-4 gap-3 mb-6">
             {Object.entries(metrics).map(([key, metric]) => (
-            <div
-              key={key}
-              className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                selectedMetric === key
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300 bg-white'
-              }`}
-              onClick={() => setSelectedMetric(key)}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <h3 className="text-xs font-medium text-gray-600 leading-tight">{metric.title}</h3>
-                <div className={`flex items-center gap-0.5 ${
-                  metric.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  <svg className={`w-3 h-3 ${metric.trend === 'down' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17l9.2-9.2M17 17V7H7" />
-                  </svg>
-                  <span className="text-xs font-medium">{metric.change}</span>
-                </div>
-              </div>
-              <div className="text-2xl font-bold text-gray-900">{metric.value}</div>
-            </div>
-          ))}
-        </div>
-
-        )}
-
-        {/* Chart Placeholder - More Compact */}
-        {!loading && metrics && (
-          <div className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">
-              {metrics[selectedMetric as keyof typeof metrics].title} Trend
-            </h3>
-            <div className="h-48 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-white">
-              <div className="text-center">
-                <svg className="w-10 h-10 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                <p className="text-sm text-gray-500">Interactive chart will be displayed here</p>
-                <p className="text-xs text-gray-400 mt-1">Showing {timeRange} data</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Insights - Side by Side */}
-        {!loading && (
-          <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Top Performing Routes</h3>
-            <div className="space-y-2">
-              {routePerformance.map((route, index) => (
-                <div key={index} className="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
-                  <span className="text-sm text-gray-700">{route.name}</span>
-                  <span className={`text-sm font-semibold ${route.performance >= 90 ? 'text-green-600' : route.performance >= 80 ? 'text-yellow-600' : 'text-red-600'}`}>
-                    {route.performance}%
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Delay Causes</h3>
-            <div className="space-y-2">
-              {delayCauses.map((cause, index) => (
-                <div key={index} className="flex justify-between items-center py-1.5 border-b border-gray-100 last:border-0">
-                  <span className="text-sm text-gray-700">{cause.name}</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-16 bg-gray-200 rounded-full h-1.5">
-                      <div 
-                        className={`h-1.5 rounded-full ${cause.percentage >= 40 ? 'bg-red-600' : cause.percentage >= 25 ? 'bg-yellow-600' : cause.percentage >= 15 ? 'bg-orange-600' : 'bg-gray-600'}`}
-                        style={{ width: `${cause.percentage}%` }}
-                      ></div>
-                    </div>
-                    <span className={`text-sm font-semibold w-10 text-right ${cause.percentage >= 40 ? 'text-red-600' : cause.percentage >= 25 ? 'text-yellow-600' : cause.percentage >= 15 ? 'text-orange-600' : 'text-gray-600'}`}>
-                      {cause.percentage}%
-                    </span>
+              <div
+                key={key}
+                className={`p-4 rounded-lg border cursor-pointer transition-all ${selectedMetric === key
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                  }`}
+                onClick={() => setSelectedMetric(key)}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="text-xs font-medium text-gray-600 leading-tight">{metric.title}</h3>
+                  <div className={`flex items-center gap-0.5 ${metric.trend === 'up' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                    <svg className={`w-3 h-3 ${metric.trend === 'down' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17l9.2-9.2M17 17V7H7" />
+                    </svg>
+                    <span className="text-xs font-medium">{metric.change}</span>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="text-2xl font-bold text-gray-900">{metric.value}</div>
+              </div>
+            ))}
           </div>
+
+        )}
+
+        {/* Interactive Charts */}
+        {!loading && metrics && chartData && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            {/* Time Series Chart */}
+            <div className="bg-white rounded-lg p-4 border border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                {metrics[selectedMetric as keyof typeof metrics].title} Trend ({timeRange})
+              </h3>
+              <GoogleChart
+                chartType="LineChart"
+                data={chartData.timeSeriesData}
+                options={getChartOptions('line')}
+                height="250px"
+              />
+            </div>
+
+            {/* Delay Causes Pie Chart */}
+            <div className="bg-white rounded-lg p-4 border border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                Delay Causes Distribution
+              </h3>
+              <GoogleChart
+                chartType="PieChart"
+                data={chartData.pieChartData}
+                options={getChartOptions('pie')}
+                height="250px"
+              />
+            </div>
           </div>
         )}
 
-        {/* Regional Performance */}
-        {!loading && (
-          <div className="mt-4 bg-white border border-gray-200 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Regional Performance</h3>
-            <div className="grid grid-cols-4 gap-4">
-              {regionalPerformance.map((region, index) => (
-                <div key={index} className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-lg font-bold text-gray-900">{region.name}</div>
-                  <div className="text-xs text-gray-600 mt-1">{region.onTimePercentage}% On Time</div>
-                </div>
-              ))}
+        {/* Route Performance Bar Chart */}
+        {!loading && chartData && (
+          <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">
+              Route Performance Comparison
+            </h3>
+            <GoogleChart
+              chartType="ColumnChart"
+              data={chartData.barChartData}
+              options={getChartOptions('bar')}
+              height="300px"
+            />
+          </div>
+        )}
+
+        {/* Additional Analytics Charts */}
+        {!loading && chartData && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+            {/* Fleet Utilization Gauge */}
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Fleet Utilization</h3>
+              <GoogleChart
+                chartType="Gauge"
+                data={[
+                  ['Label', 'Value'],
+                  ['Utilization', metrics?.fleet_utilization ? parseFloat(metrics.fleet_utilization.value.replace('%', '')) : 92]
+                ]}
+                options={{
+                  width: '100%',
+                  height: 200,
+                  redFrom: 0,
+                  redTo: 25,
+                  yellowFrom: 25,
+                  yellowTo: 75,
+                  greenFrom: 75,
+                  greenTo: 100,
+                  minorTicks: 5
+                }}
+              />
+            </div>
+
+            {/* Customer Satisfaction Gauge */}
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Customer Satisfaction</h3>
+              <GoogleChart
+                chartType="Gauge"
+                data={[
+                  ['Label', 'Value'],
+                  ['Rating', metrics?.customer_satisfaction ? parseFloat(metrics.customer_satisfaction.value.split('/')[0]) : 4.2]
+                ]}
+                options={{
+                  width: '100%',
+                  height: 200,
+                  max: 5,
+                  redFrom: 0,
+                  redTo: 2,
+                  yellowFrom: 2,
+                  yellowTo: 3.5,
+                  greenFrom: 3.5,
+                  greenTo: 5,
+                  minorTicks: 5
+                }}
+              />
+            </div>
+
+            {/* Regional Performance Donut */}
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Regional Performance</h3>
+              <GoogleChart
+                chartType="PieChart"
+                data={[
+                  ['Region', 'On-Time %'],
+                  ...regionalPerformance.map(region => [region.name, region.onTimePercentage])
+                ]}
+                options={{
+                  ...getChartOptions('pie'),
+                  pieHole: 0.4,
+                  height: 200,
+                  colors: ['#10B981', '#3B82F6', '#F59E0B', '#EF4444']
+                }}
+              />
             </div>
           </div>
         )}
+
+        {/* Smart Performance Insights */}
+        {!loading && routePerformance.length > 0 && delayCauses.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Key Insights</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-sm text-gray-700">
+                    Best route: {routePerformance.sort((a, b) => b.performance - a.performance)[0]?.name} ({routePerformance.sort((a, b) => b.performance - a.performance)[0]?.performance}%)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <span className="text-sm text-gray-700">
+                    Needs attention: {routePerformance.sort((a, b) => a.performance - b.performance)[0]?.name} ({routePerformance.sort((a, b) => a.performance - b.performance)[0]?.performance}%)
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <span className="text-sm text-gray-700">
+                    Main delay cause: {delayCauses.sort((a, b) => b.percentage - a.percentage)[0]?.name} ({delayCauses.sort((a, b) => b.percentage - a.percentage)[0]?.percentage}%)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-sm text-gray-700">
+                    Fleet utilization: {metrics?.fleet_utilization?.value || 'N/A'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

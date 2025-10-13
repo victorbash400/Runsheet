@@ -607,33 +607,7 @@ async def get_support_tickets():
 # Analytics
 @router.get("/analytics/metrics")
 async def get_analytics_metrics(timeRange: str = "7d"):
-    metrics = {
-        "delivery_performance": {
-            "title": "Delivery Performance",
-            "value": "87.5%",
-            "change": "+2.3%",
-            "trend": "up"
-        },
-        "average_delay": {
-            "title": "Average Delay",
-            "value": "2.4 hrs",
-            "change": "-0.8 hrs",
-            "trend": "down"
-        },
-        "fleet_utilization": {
-            "title": "Fleet Utilization",
-            "value": "92%",
-            "change": "+5%",
-            "trend": "up"
-        },
-        "customer_satisfaction": {
-            "title": "Customer Satisfaction",
-            "value": "4.2/5",
-            "change": "+0.1",
-            "trend": "up"
-        }
-    }
-    
+    metrics = await elasticsearch_service.get_current_metrics()
     return {
         "data": metrics,
         "success": True,
@@ -642,13 +616,7 @@ async def get_analytics_metrics(timeRange: str = "7d"):
 
 @router.get("/analytics/routes")
 async def get_route_performance():
-    routes = [
-        {"name": "Nairobi → Mombasa", "performance": 94},
-        {"name": "Kisumu → Nakuru", "performance": 91},
-        {"name": "Eldoret → Nairobi", "performance": 78},
-        {"name": "Mombasa → Kisumu", "performance": 75}
-    ]
-    
+    routes = await elasticsearch_service.get_route_performance_data()
     return {
         "data": routes,
         "success": True,
@@ -657,13 +625,7 @@ async def get_route_performance():
 
 @router.get("/analytics/delay-causes")
 async def get_delay_causes():
-    causes = [
-        {"name": "Traffic Congestion", "percentage": 45},
-        {"name": "Weather Conditions", "percentage": 28},
-        {"name": "Vehicle Maintenance", "percentage": 18},
-        {"name": "Other", "percentage": 9}
-    ]
-    
+    causes = await elasticsearch_service.get_delay_causes_data()
     return {
         "data": causes,
         "success": True,
@@ -672,15 +634,23 @@ async def get_delay_causes():
 
 @router.get("/analytics/regional")
 async def get_regional_performance():
-    regions = [
-        {"name": "Nairobi", "onTimePercentage": 92},
-        {"name": "Mombasa", "onTimePercentage": 88},
-        {"name": "Kisumu", "onTimePercentage": 85},
-        {"name": "Eldoret", "onTimePercentage": 81}
-    ]
-    
+    regions = await elasticsearch_service.get_regional_performance_data()
     return {
         "data": regions,
+        "success": True,
+        "timestamp": datetime.now().isoformat()
+    }
+
+@router.get("/analytics/time-series")
+async def get_time_series_data(metric: str = "delivery_performance_pct", timeRange: str = "7d"):
+    """Get time-series data for trending charts"""
+    event_type = "hourly_metrics" if timeRange == "24h" else "daily_performance"
+    data = await elasticsearch_service.get_time_series_data(event_type, metric, timeRange)
+    
+    return {
+        "data": data,
+        "metric": metric,
+        "timeRange": timeRange,
         "success": True,
         "timestamp": datetime.now().isoformat()
     }
