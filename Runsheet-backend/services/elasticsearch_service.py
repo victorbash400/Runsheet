@@ -315,8 +315,7 @@ class ElasticsearchService:
                         "fields": fields,
                         "type": "best_fields"
                     }
-                },
-                "size": size
+                }
             }
             response = await self.search_documents(index, query, size)
             return [hit["_source"] for hit in response["hits"]["hits"]]

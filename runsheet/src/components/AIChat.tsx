@@ -266,24 +266,24 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
           </div>
 
           {/* Mode Toggle */}
-          <div className="flex bg-gray-100/80 rounded-xl p-1 shadow-inner">
+          <div className="flex bg-gray-50 rounded-lg p-0.5 border border-gray-200">
             <button
               onClick={() => setMode('chat')}
-              className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${mode === 'chat'
-                ? 'bg-white text-blue-600 shadow-md'
-                : 'text-gray-600 hover:text-gray-900'
+              className={`flex-1 px-2.5 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${mode === 'chat'
+                ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                 }`}
             >
-              💬 Chat
+              Chat
             </button>
             <button
               onClick={() => setMode('agent')}
-              className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${mode === 'agent'
-                ? 'bg-white text-blue-600 shadow-md'
-                : 'text-gray-600 hover:text-gray-900'
+              className={`flex-1 px-2.5 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${mode === 'agent'
+                ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                 }`}
             >
-              🤖 Agent
+              Agent
             </button>
           </div>
         </div>
@@ -311,7 +311,7 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
                       <div className="text-sm text-gray-800 leading-relaxed prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900 prose-ul:text-gray-800 prose-li:text-gray-800">
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                         {msg.isStreaming && (
-                          <span className="inline-block w-1.5 h-4 ml-1 bg-blue-500 animate-pulse rounded" />
+                          <span className="inline-block w-1.5 h-4 ml-1 animate-pulse rounded" style={{ backgroundColor: '#232323' }} />
                         )}
                       </div>
                       <div className="text-xs text-gray-400 mt-1.5 ml-0.5">
