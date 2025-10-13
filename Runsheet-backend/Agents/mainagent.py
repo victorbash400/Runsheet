@@ -1,10 +1,10 @@
 import os
 import logging
 from typing import AsyncGenerator
-from strands import Agent, tool
+from strands import Agent
 from strands.models.litellm import LiteLLMModel
 from dotenv import load_dotenv
-from services.elasticsearch_service import elasticsearch_service
+from .tools import ALL_TOOLS
 
 # Load environment variables
 load_dotenv()
@@ -20,134 +20,6 @@ logger = logging.getLogger(__name__)
 # Suppress OpenTelemetry warnings and errors
 logging.getLogger('opentelemetry').setLevel(logging.CRITICAL)
 logging.getLogger('opentelemetry.context').setLevel(logging.CRITICAL)
-
-@tool
-async def search_fleet_data(query: str) -> str:
-    """
-    Search fleet and truck data using natural language.
-    
-    Args:
-        query: Natural language search query (e.g., "trucks carrying perishables", "delayed vehicles")
-    
-    Returns:
-        Search results from fleet database
-    """
-    try:
-        logger.info(f"🔍 Searching fleet data for: {query}")
-        results = await elasticsearch_service.semantic_search("trucks", query, ["cargo.description", "driver_name", "status"], 5)
-        
-        if not results:
-            return f"No fleet data found for query: '{query}'"
-        
-        response = f"🚛 Found {len(results)} trucks matching '{query}':\n\n"
-        for truck in results:
-            response += f"• **{truck.get('plate_number')}** - {truck.get('driver_name')}\n"
-            response += f"  Status: {truck.get('status')}\n"
-            if truck.get('cargo'):
-                response += f"  Cargo: {truck.get('cargo', {}).get('description', 'N/A')}\n"
-            response += f"  Location: {truck.get('current_location', {}).get('name', 'Unknown')}\n\n"
-        
-        return response
-    except Exception as e:
-        logger.error(f"Error searching fleet data: {e}")
-        return f"Error searching fleet data: {str(e)}"
-
-@tool
-async def search_orders(query: str) -> str:
-    """
-    Search order data using natural language.
-    
-    Args:
-        query: Natural language search query (e.g., "network equipment orders", "high priority deliveries")
-    
-    Returns:
-        Search results from orders database
-    """
-    try:
-        logger.info(f"🔍 Searching orders for: {query}")
-        results = await elasticsearch_service.semantic_search("orders", query, ["items", "customer"], 5)
-        
-        if not results:
-            return f"No orders found for query: '{query}'"
-        
-        response = f"📦 Found {len(results)} orders matching '{query}':\n\n"
-        for order in results:
-            response += f"• **{order.get('order_id')}** - {order.get('customer')}\n"
-            response += f"  Status: {order.get('status')}\n"
-            response += f"  Value: ${order.get('value', 0):,.2f}\n"
-            response += f"  Items: {order.get('items', 'N/A')}\n"
-            response += f"  Priority: {order.get('priority', 'N/A')}\n\n"
-        
-        return response
-    except Exception as e:
-        logger.error(f"Error searching orders: {e}")
-        return f"Error searching orders: {str(e)}"
-
-@tool
-async def search_support_tickets(query: str) -> str:
-    """
-    Search support tickets using natural language.
-    
-    Args:
-        query: Natural language search query (e.g., "delivery delays", "damaged goods")
-    
-    Returns:
-        Search results from support tickets database
-    """
-    try:
-        logger.info(f"🔍 Searching support tickets for: {query}")
-        results = await elasticsearch_service.semantic_search("support_tickets", query, ["issue", "description"], 5)
-        
-        if not results:
-            return f"No support tickets found for query: '{query}'"
-        
-        response = f"🎫 Found {len(results)} support tickets matching '{query}':\n\n"
-        for ticket in results:
-            response += f"• **{ticket.get('ticket_id')}** - {ticket.get('customer')}\n"
-            response += f"  Issue: {ticket.get('issue')}\n"
-            response += f"  Priority: {ticket.get('priority')}\n"
-            response += f"  Status: {ticket.get('status')}\n"
-            response += f"  Description: {ticket.get('description', 'N/A')[:100]}...\n\n"
-        
-        return response
-    except Exception as e:
-        logger.error(f"Error searching support tickets: {e}")
-        return f"Error searching support tickets: {str(e)}"
-
-@tool
-async def get_fleet_summary() -> str:
-    """
-    Get current fleet status summary.
-    
-    Returns:
-        Summary of fleet status including total trucks, delays, etc.
-    """
-    try:
-        logger.info("📊 Getting fleet summary")
-        # Use semantic search to get all trucks (search for "truck" matches all truck documents)
-        trucks = await elasticsearch_service.semantic_search("trucks", "truck", ["plate_number", "driver_name", "status"], 100)
-        
-        total = len(trucks)
-        on_time = len([t for t in trucks if t.get("status") == "on_time"])
-        delayed = len([t for t in trucks if t.get("status") == "delayed"])
-        
-        response = f"🚛 **Fleet Summary**\n\n"
-        response += f"• Total Trucks: {total}\n"
-        response += f"• On Time: {on_time}\n"
-        response += f"• Delayed: {delayed}\n"
-        if total > 0:
-            response += f"• Performance: {(on_time/total*100):.1f}% on time\n\n"
-        
-        if delayed > 0:
-            response += "**Delayed Trucks:**\n"
-            for truck in trucks:
-                if truck.get("status") == "delayed":
-                    response += f"• {truck.get('plate_number')} - {truck.get('driver_name')}\n"
-        
-        return response
-    except Exception as e:
-        logger.error(f"Error getting fleet summary: {e}")
-        return f"Error getting fleet summary: {str(e)}"
 
 class LogisticsAgent:
     def __init__(self):
@@ -185,17 +57,27 @@ class LogisticsAgent:
 
             **AGENT MODE:**
             When in Agent Mode, you:
-            - Gather requirements and ask clarifying questions
-            - Explain your plan before executing
-            - Use tools to analyze real data systematically
-            - Provide structured analysis and recommendations
-            - Be more formal and systematic in your approach
+            - Generate comprehensive reports using multiple tools
+            - Provide structured analysis with markdown formatting
+            - Use report generation tools for complex analysis
+            - Be systematic and thorough in data gathering
+            - Present findings in a professional report format
+            - Always explain your methodology and data sources
 
             **Available Tools:**
-            - `search_fleet_data(query)` - Search trucks and fleet information
-            - `search_orders(query)` - Search customer orders and deliveries  
-            - `search_support_tickets(query)` - Search support issues and tickets
+            - `search_fleet_data(query)` - Search trucks using semantic search
+            - `search_orders(query)` - Search orders using semantic search  
+            - `search_support_tickets(query)` - Search support tickets using semantic search
+            - `search_inventory(query)` - Search inventory items using semantic search
+            - `get_inventory_summary()` - Get all inventory items organized by status
             - `get_fleet_summary()` - Get current fleet status overview
+            - `get_analytics_overview()` - Get performance metrics and KPIs
+            - `get_performance_insights()` - Get actionable performance insights
+            - `find_truck_by_id(truck_id)` - Find specific truck by ID/plate number
+            - `get_all_locations()` - Get all depots, warehouses, and stations
+            - `generate_operations_report()` - Generate comprehensive operations status report
+            - `generate_performance_report()` - Generate detailed performance analysis report
+            - `generate_incident_analysis(issue)` - Analyze incidents across multiple data sources
 
             **Your Expertise Areas:**
             - Fleet tracking and vehicle management
@@ -222,12 +104,7 @@ class LogisticsAgent:
             You: "I found [X] orders containing network equipment: [results and insights]"
 
             Always announce your tool usage and explain the results clearly.""",
-            tools=[
-                search_fleet_data,
-                search_orders, 
-                search_support_tickets,
-                get_fleet_summary
-            ]
+            tools=ALL_TOOLS
         )
         logger.info("✅ Logistics Agent initialized with Strands + Gemini 2.5 Flash")
 
@@ -258,13 +135,71 @@ class LogisticsAgent:
             logger.error(f"Failed to clear agent memory: {e}")
 
     async def chat_streaming(self, message: str, mode: str = "chat") -> AsyncGenerator[dict, None]:
-        """Asynchronous streaming chat method"""
+        """Asynchronous streaming chat method with retry logic"""
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                # Add mode context to the message
+                message_with_context = f"[Mode: {mode.upper()}] {message}"
+                
+                # Track if we got any response
+                got_response = False
+                
+                async for event in self.agent.stream_async(message_with_context):
+                    got_response = True
+                    yield event
+                
+                # If we got here without exception, we're done
+                return
+                
+            except Exception as e:
+                retry_count += 1
+                error_msg = str(e)
+                
+                # Check if it's a connection error
+                is_connection_error = any(keyword in error_msg.lower() for keyword in [
+                    'connection closed', 'connection error', 'timeout', 'unavailable'
+                ])
+                
+                if is_connection_error and retry_count < max_retries:
+                    logger.warning(f"Connection error (attempt {retry_count}/{max_retries}): {error_msg}")
+                    yield {
+                        "type": "status",
+                        "content": f"🔄 Connection interrupted, retrying... (attempt {retry_count}/{max_retries})"
+                    }
+                    
+                    # Wait a bit before retrying
+                    import asyncio
+                    await asyncio.sleep(1 * retry_count)  # Exponential backoff
+                    continue
+                else:
+                    # Non-connection error or max retries reached
+                    logger.error(f"Error in streaming chat (final): {e}")
+                    
+                    if retry_count >= max_retries:
+                        yield {
+                            "type": "error", 
+                            "content": f"❌ Connection failed after {max_retries} attempts. The tools work fine, but the AI service is having connectivity issues. Please try again in a moment."
+                        }
+                    else:
+                        yield {
+                            "type": "error",
+                            "content": f"❌ Error: {error_msg}"
+                        }
+                    return
+
+    async def chat_fallback(self, message: str, mode: str = "chat") -> str:
+        """Non-streaming fallback method for when streaming fails"""
         try:
-            # Add mode context to the message
+            logger.info("🔄 Using non-streaming fallback mode")
             message_with_context = f"[Mode: {mode.upper()}] {message}"
             
-            async for event in self.agent.stream_async(message_with_context):
-                yield event
+            # Use non-streaming completion
+            response = await self.agent.run_async(message_with_context)
+            return response
+            
         except Exception as e:
-            logger.error(f"Error in streaming chat: {e}")
-            yield {"error": str(e)}
+            logger.error(f"Error in fallback chat: {e}")
+            return f"❌ I'm having trouble connecting to the AI service right now. However, all the data tools are working fine. Please try again in a moment."

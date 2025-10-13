@@ -107,6 +107,26 @@ async def chat_endpoint(request: ChatRequest):
         logger.error(f"Error in chat endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/chat/fallback")
+async def chat_fallback_endpoint(request: ChatRequest):
+    """
+    Non-streaming chat fallback endpoint
+    """
+    try:
+        logger.info(f"🔄 BACKEND: Fallback chat request - Mode: {request.mode}, Message: {request.message[:50]}...")
+        
+        response = await logistics_agent.chat_fallback(request.message, request.mode)
+        
+        return {
+            "response": response,
+            "mode": request.mode,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in fallback chat endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/chat/clear")
 async def clear_chat_endpoint(request: ClearChatRequest):
     """

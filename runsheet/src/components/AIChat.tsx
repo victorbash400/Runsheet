@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Trash2, X, Truck, SendHorizontal } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import ReportViewer from './ReportViewer';
 
 interface ChatMessage {
   id: string;
@@ -49,12 +50,54 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [toolStatus, setToolStatus] = useState<string>('');
   const [mode, setMode] = useState<'chat' | 'agent'>('chat');
+  const [reportContent, setReportContent] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const processingRef = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const isReport = (content: string) => {
+    return content.includes('# 📋 Operations Report') || 
+           content.includes('# 📊 Performance Analysis Report') || 
+           content.includes('# 🔍 Incident Analysis Report') ||
+           (content.includes('Generated:') && content.includes('##'));
+  };
+
+  const getToolIcon = (toolName?: string) => {
+    if (!toolName) return '🔧';
+    
+    // Search tools
+    if (toolName.startsWith('search_')) return '🔍';
+    
+    // Report tools
+    if (toolName.startsWith('generate_')) return '📊';
+    
+    // Summary tools
+    if (toolName.includes('summary') || toolName.includes('overview') || toolName.includes('insights')) return '📈';
+    
+    // Lookup tools
+    if (toolName.startsWith('find_') || toolName.startsWith('get_all_')) return '🔎';
+    
+    // Specific tools
+    switch (toolName) {
+      case 'search_fleet_data': return '🚛';
+      case 'search_orders': return '📦';
+      case 'search_support_tickets': return '🎫';
+      case 'search_inventory': return '📦';
+      case 'get_fleet_summary': return '🚛';
+      case 'get_inventory_summary': return '📦';
+      case 'get_analytics_overview': return '📊';
+      case 'get_performance_insights': return '🎯';
+      case 'find_truck_by_id': return '🚛';
+      case 'get_all_locations': return '📍';
+      case 'generate_operations_report': return '📋';
+      case 'generate_performance_report': return '📊';
+      case 'generate_incident_analysis': return '🔍';
+      default: return '🔧';
+    }
   };
 
   useEffect(() => {
@@ -363,11 +406,7 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
               {msg.role === 'tool-indicator' ? (
                 <div className="max-w-[85%] my-1">
                   <span className="inline-block px-2 py-1 text-xs text-white rounded border" style={{ backgroundColor: '#232323', borderColor: '#232323' }}>
-                    {msg.toolName === 'search_orders' && 'search_orders'}
-                    {msg.toolName === 'search_fleet_data' && 'search_fleet_data'}
-                    {msg.toolName === 'search_support_tickets' && 'search_support_tickets'}
-                    {msg.toolName === 'get_fleet_summary' && 'get_fleet_summary'}
-                    {!['search_orders', 'search_fleet_data', 'search_support_tickets', 'get_fleet_summary'].includes(msg.toolName || '') && msg.toolName}
+                    {getToolIcon(msg.toolName)} {msg.toolName || 'tool'}
                   </span>
                 </div>
               ) : msg.role === 'assistant' ? (
@@ -378,6 +417,16 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
                       <span className="inline-block w-1.5 h-4 ml-1 animate-pulse rounded" style={{ backgroundColor: '#232323' }} />
                     )}
                   </div>
+                  {isReport(msg.content) && !msg.isStreaming && (
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={() => setReportContent(msg.content)}
+                        className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-1"
+                      >
+                        📊 View Report
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="max-w-[75%]">
@@ -432,6 +481,14 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
 
         </div>
       </div>
+
+      {/* Report Viewer Modal */}
+      {reportContent && (
+        <ReportViewer
+          content={reportContent}
+          onClose={() => setReportContent(null)}
+        />
+      )}
     </>
   );
 }
