@@ -6,11 +6,13 @@ import ReactMarkdown from 'react-markdown';
 
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'tool-indicator';
   content: string;
   timestamp: Date;
   isStreaming?: boolean;
-  toolUsed?: string;
+  toolName?: string;
+  toolStatus?: 'in-progress' | 'done';
+  isContinuation?: boolean;
 }
 
 interface AIChatProps {
@@ -115,30 +117,68 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
               if (data.type === 'text' && data.content) {
                 setMessages(prev => {
                   const updated = [...prev];
-                  const lastMsg = updated[updated.length - 1];
-                  if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
-                    lastMsg.content += data.content;
+                  // Find the last streaming assistant message
+                  const lastStreamingAssistantIndex = updated.findLastIndex(msg =>
+                    msg.role === 'assistant' && msg.isStreaming
+                  );
+                  if (lastStreamingAssistantIndex !== -1) {
+                    updated[lastStreamingAssistantIndex].content += data.content;
                   }
                   return updated;
                 });
               }
 
               if (data.type === 'tool' && data.tool_name) {
-                // Tool is being used
+                // Tool is being used - split the assistant message and add tool indicator
                 setMessages(prev => {
                   const updated = [...prev];
-                  const lastMsg = updated[updated.length - 1];
-                  if (lastMsg.role === 'assistant' && lastMsg.isStreaming) {
-                    lastMsg.toolUsed = data.tool_name;
+                  const lastAssistantIndex = updated.findLastIndex(msg => msg.role === 'assistant');
+
+                  if (lastAssistantIndex !== -1 && updated[lastAssistantIndex].isStreaming) {
+                    // Stop streaming on the current assistant message
+                    updated[lastAssistantIndex].isStreaming = false;
+
+                    // Add tool indicator
+                    updated.push({
+                      id: `tool-${Date.now()}`,
+                      role: 'tool-indicator',
+                      content: '',
+                      timestamp: new Date(),
+                      toolName: data.tool_name,
+                      toolStatus: 'in-progress'
+                    });
+
+                    // Add a new assistant message for post-tool content
+                    updated.push({
+                      id: `assistant-${Date.now()}`,
+                      role: 'assistant',
+                      content: '',
+                      timestamp: new Date(),
+                      isStreaming: true,
+                      isContinuation: true
+                    });
                   }
                   return updated;
                 });
-                setToolStatus(data.tool_name);
               }
 
               if (data.type === 'tool_result') {
-                // Tool finished, clear the status
-                setToolStatus('');
+                // Tool finished - update the indicator
+                setMessages(prev => {
+                  const updated = [...prev];
+                  const toolIndicatorIndex = updated.findIndex(msg =>
+                    msg.role === 'tool-indicator' && msg.toolStatus === 'in-progress'
+                  );
+
+                  if (toolIndicatorIndex !== -1) {
+                    updated[toolIndicatorIndex].toolStatus = 'done';
+                    // Remove the tool indicator after a short delay
+                    setTimeout(() => {
+                      setMessages(prevMsgs => prevMsgs.filter(msg => msg.id !== updated[toolIndicatorIndex].id));
+                    }, 500);
+                  }
+                  return updated;
+                });
               }
 
               if (data.type === 'done') {
@@ -320,37 +360,23 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
               key={msg.id}
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              {msg.role === 'assistant' ? (
-                <div className="max-w-[85%] space-y-2">
-                  <div className="flex items-start space-x-2">
-                    <div className="flex-shrink-0 w-7 h-7 flex items-center justify-center">
-                      <Truck className="w-4 h-4 text-gray-600" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-sm text-gray-800 leading-relaxed prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900 prose-ul:text-gray-800 prose-li:text-gray-800">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
-                        {msg.isStreaming && (
-                          <span className="inline-block w-1.5 h-4 ml-1 animate-pulse rounded" style={{ backgroundColor: '#232323' }} />
-                        )}
-                      </div>
-
-                      {/* Tool Usage Indicator */}
-                      {msg.toolUsed && (
-                        <div className="inline-block mt-1">
-                          <span className="inline-block px-2 py-1 text-xs text-white rounded border" style={{ backgroundColor: '#232323', borderColor: '#232323' }}>
-                            {msg.toolUsed === 'search_orders' && 'search_orders'}
-                            {msg.toolUsed === 'search_fleet_data' && 'search_fleet_data'}
-                            {msg.toolUsed === 'search_support_tickets' && 'search_support_tickets'}
-                            {msg.toolUsed === 'get_fleet_summary' && 'get_fleet_summary'}
-                            {!['search_orders', 'search_fleet_data', 'search_support_tickets', 'get_fleet_summary'].includes(msg.toolUsed) && msg.toolUsed}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="text-xs text-gray-400 mt-1.5 ml-0.5">
-                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
+              {msg.role === 'tool-indicator' ? (
+                <div className="max-w-[85%] my-1">
+                  <span className="inline-block px-2 py-1 text-xs text-white rounded border" style={{ backgroundColor: '#232323', borderColor: '#232323' }}>
+                    {msg.toolName === 'search_orders' && 'search_orders'}
+                    {msg.toolName === 'search_fleet_data' && 'search_fleet_data'}
+                    {msg.toolName === 'search_support_tickets' && 'search_support_tickets'}
+                    {msg.toolName === 'get_fleet_summary' && 'get_fleet_summary'}
+                    {!['search_orders', 'search_fleet_data', 'search_support_tickets', 'get_fleet_summary'].includes(msg.toolName || '') && msg.toolName}
+                  </span>
+                </div>
+              ) : msg.role === 'assistant' ? (
+                <div className="max-w-[85%]">
+                  <div className="text-sm text-gray-800 leading-relaxed prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900 prose-ul:text-gray-800 prose-li:text-gray-800">
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    {msg.isStreaming && (
+                      <span className="inline-block w-1.5 h-4 ml-1 animate-pulse rounded" style={{ backgroundColor: '#232323' }} />
+                    )}
                   </div>
                 </div>
               ) : (
@@ -360,9 +386,7 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
                       {msg.content}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-400 mt-1.5 text-right mr-1">
-                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
+
                 </div>
               )}
             </div>
