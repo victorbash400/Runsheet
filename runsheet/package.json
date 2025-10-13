@@ -10,6 +10,7 @@
     "format": "biome format --write"
   },
   "dependencies": {
+    "@vis.gl/react-google-maps": "^1.5.5",
     "lucide-react": "^0.545.0",
     "next": "15.5.4",
     "react": "19.1.0",

@@ -88,6 +88,30 @@ class DataSeeder:
                 "coordinates": {"lat": -1.3733, "lon": 36.7516},
                 "address": "Kinara, Kenya",
                 "region": "Central"
+            },
+            {
+                "location_id": "nakuru-station",
+                "name": "Nakuru Station",
+                "type": "station",
+                "coordinates": {"lat": -0.3031, "lon": 36.0800},
+                "address": "Nakuru, Kenya",
+                "region": "Rift Valley"
+            },
+            {
+                "location_id": "eldoret-depot",
+                "name": "Eldoret Depot",
+                "type": "depot",
+                "coordinates": {"lat": 0.5143, "lon": 35.2698},
+                "address": "Eldoret, Kenya",
+                "region": "Rift Valley"
+            },
+            {
+                "location_id": "thika-warehouse",
+                "name": "Thika Warehouse",
+                "type": "warehouse",
+                "coordinates": {"lat": -1.0332, "lon": 37.0692},
+                "address": "Thika, Kenya",
+                "region": "Central"
             }
         ]
         
@@ -203,6 +227,114 @@ class DataSeeder:
                     "volume": 60.0,
                     "description": "Cement bags and steel rods for construction projects",
                     "priority": "medium"
+                }
+            },
+            {
+                "truck_id": "KA-123B",
+                "plate_number": "KA-123B",
+                "driver_id": "driver-004",
+                "driver_name": "Sarah Njeri",
+                "current_location": {
+                    "id": "nakuru-station",
+                    "name": "Nakuru Station",
+                    "type": "station",
+                    "coordinates": {"lat": -0.3031, "lon": 36.0800},
+                    "address": "Nakuru, Kenya"
+                },
+                "destination": {
+                    "id": "nairobi-station",
+                    "name": "Nairobi Station",
+                    "type": "station",
+                    "coordinates": {"lat": -1.2921, "lon": 36.8219},
+                    "address": "Nairobi, Kenya"
+                },
+                "route": {
+                    "id": "nakuru-nairobi",
+                    "distance": 160.0,
+                    "estimated_duration": 180,
+                    "actual_duration": None
+                },
+                "status": "on_time",
+                "estimated_arrival": "2024-01-15T15:30:00Z",
+                "last_update": "2024-01-15T12:30:00Z",
+                "cargo": {
+                    "type": "Electronics",
+                    "weight": 5000.0,
+                    "volume": 20.0,
+                    "description": "Computer equipment and mobile phones for retail stores",
+                    "priority": "high"
+                }
+            },
+            {
+                "truck_id": "KBZ-456C",
+                "plate_number": "KBZ-456C",
+                "driver_id": "driver-005",
+                "driver_name": "David Mwangi",
+                "current_location": {
+                    "id": "eldoret-depot",
+                    "name": "Eldoret Depot",
+                    "type": "depot",
+                    "coordinates": {"lat": 0.5143, "lon": 35.2698},
+                    "address": "Eldoret, Kenya"
+                },
+                "destination": {
+                    "id": "kisumu-depot",
+                    "name": "Kisumu Depot",
+                    "type": "depot",
+                    "coordinates": {"lat": -0.0917, "lon": 34.7680},
+                    "address": "Kisumu, Kenya"
+                },
+                "route": {
+                    "id": "eldoret-kisumu",
+                    "distance": 120.0,
+                    "estimated_duration": 150,
+                    "actual_duration": None
+                },
+                "status": "on_time",
+                "estimated_arrival": "2024-01-15T17:00:00Z",
+                "last_update": "2024-01-15T12:45:00Z",
+                "cargo": {
+                    "type": "Agricultural Products",
+                    "weight": 12000.0,
+                    "volume": 35.0,
+                    "description": "Maize and wheat grain for distribution centers",
+                    "priority": "medium"
+                }
+            },
+            {
+                "truck_id": "KCD-789D",
+                "plate_number": "KCD-789D",
+                "driver_id": "driver-006",
+                "driver_name": "Grace Akinyi",
+                "current_location": {
+                    "id": "thika-warehouse",
+                    "name": "Thika Warehouse",
+                    "type": "warehouse",
+                    "coordinates": {"lat": -1.0332, "lon": 37.0692},
+                    "address": "Thika, Kenya"
+                },
+                "destination": {
+                    "id": "mombasa-port",
+                    "name": "Mombasa Port",
+                    "type": "port",
+                    "coordinates": {"lat": -4.0435, "lon": 39.6682},
+                    "address": "Mombasa, Kenya"
+                },
+                "route": {
+                    "id": "thika-mombasa",
+                    "distance": 520.0,
+                    "estimated_duration": 420,
+                    "actual_duration": None
+                },
+                "status": "delayed",
+                "estimated_arrival": "2024-01-15T19:45:00Z",
+                "last_update": "2024-01-15T13:00:00Z",
+                "cargo": {
+                    "type": "Textiles",
+                    "weight": 8500.0,
+                    "volume": 40.0,
+                    "description": "Clothing and fabric materials for export",
+                    "priority": "low"
                 }
             }
         ]

@@ -124,7 +124,8 @@ async def get_fleet_summary() -> str:
     """
     try:
         logger.info("📊 Getting fleet summary")
-        trucks = await elasticsearch_service.get_all_documents("trucks")
+        # Use semantic search to get all trucks (search for "truck" matches all truck documents)
+        trucks = await elasticsearch_service.semantic_search("trucks", "truck", ["plate_number", "driver_name", "status"], 100)
         
         total = len(trucks)
         on_time = len([t for t in trucks if t.get("status") == "on_time"])
@@ -134,7 +135,8 @@ async def get_fleet_summary() -> str:
         response += f"• Total Trucks: {total}\n"
         response += f"• On Time: {on_time}\n"
         response += f"• Delayed: {delayed}\n"
-        response += f"• Performance: {(on_time/total*100):.1f}% on time\n\n"
+        if total > 0:
+            response += f"• Performance: {(on_time/total*100):.1f}% on time\n\n"
         
         if delayed > 0:
             response += "**Delayed Trucks:**\n"
