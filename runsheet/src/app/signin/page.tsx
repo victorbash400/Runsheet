@@ -13,8 +13,8 @@ export default function SignInPage() {
       localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('userEmail', email);
       
-      // Redirect to main dashboard
-      router.push('/');
+      // Use replace instead of push to prevent back navigation to signin
+      router.replace('/');
     } else {
       // This error will be handled by the SignIn component
       throw new Error('Invalid credentials');

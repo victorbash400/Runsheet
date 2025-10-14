@@ -27,15 +27,25 @@ export default function Home() {
   useEffect(() => {
     const checkAuth = () => {
       const authStatus = localStorage.getItem('isAuthenticated');
+
       if (authStatus === 'true') {
         setIsAuthenticated(true);
+        setIsLoading(false);
       } else {
-        router.push('/signin');
+        // Clear any existing auth data
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('userEmail');
+
+        // Redirect to signin
+        router.replace('/signin');
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
-    checkAuth();
+    // Check if we're in the browser environment
+    if (typeof window !== 'undefined') {
+      checkAuth();
+    }
   }, [router]);
 
   const handleSidebarToggle = () => {
@@ -64,7 +74,7 @@ export default function Home() {
             </div>
           </div>
         );
-      
+
       case 'inventory':
         return (
           <div className="flex-1 p-6 bg-gray-50">
@@ -73,7 +83,7 @@ export default function Home() {
             </div>
           </div>
         );
-      
+
       case 'orders':
         return (
           <div className="flex-1 p-6 bg-gray-50">
@@ -82,7 +92,7 @@ export default function Home() {
             </div>
           </div>
         );
-      
+
       case 'fleet':
         return (
           <div className="flex-1 p-6 bg-gray-50">
@@ -91,7 +101,7 @@ export default function Home() {
               <div className="w-1/2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <FleetTracking onTruckSelect={handleTruckSelect} />
               </div>
-              
+
               {/* Map View */}
               <div className="w-1/2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <MapView selectedTruck={selectedTruck} />
@@ -99,7 +109,7 @@ export default function Home() {
             </div>
           </div>
         );
-      
+
 
       case 'analytics':
         return (
@@ -109,7 +119,7 @@ export default function Home() {
             </div>
           </div>
         );
-      
+
       case 'support':
         return (
           <div className="flex-1 p-6 bg-gray-50">
@@ -118,7 +128,7 @@ export default function Home() {
             </div>
           </div>
         );
-      
+
       default:
         return (
           <div className="flex-1 flex items-center justify-center bg-white">
@@ -152,17 +162,17 @@ export default function Home() {
     <div className="h-screen flex flex-col bg-white">
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar - Full Height (minus top bar) */}
-        <Sidebar 
+        <Sidebar
           activeItem={activeMenuItem}
           isCollapsed={sidebarCollapsed}
           onToggle={handleSidebarToggle}
           onNavigate={handleMenuNavigation}
         />
-        
+
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ minWidth: 0 }}>
           <Header onAIClick={handleAIClick} />
-          
+
           <main className="flex-1 flex bg-white relative z-0 overflow-hidden">
             <div className="flex-1 flex bg-white overflow-auto">
               {renderMainContent()}
@@ -172,7 +182,7 @@ export default function Home() {
       </div>
 
       {/* AI Chat Overlay */}
-      <AIChat 
+      <AIChat
         isOpen={aiChatOpen}
         onClose={() => setAiChatOpen(false)}
       />
