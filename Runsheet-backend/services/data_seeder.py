@@ -1,11 +1,11 @@
 """
 Data seeder for Elasticsearch
-Seeds the Elasticsearch indices with mock data from data_endpoints.py
+Seeds the Elasticsearch indices with mock data and handles temporal data updates
 """
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from services.elasticsearch_service import elasticsearch_service
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,83 @@ class DataSeeder:
             logger.error(f"❌ Data seeding failed: {e}")
             raise
     
-    async def seed_locations(self):
+    async def seed_baseline_data(self, operational_time="09:00"):
+        """Seed baseline morning operations data for demo"""
+        try:
+            logger.info(f"🌅 Seeding baseline data for {operational_time}...")
+            
+            # Check if baseline data already exists
+            existing_trucks = await self.es_service.get_all_documents("trucks")
+            if len(existing_trucks) > 0:
+                logger.info("📋 Baseline data already exists, skipping seeding")
+                return
+            
+            # Add temporal metadata to all documents
+            base_timestamp = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
+            batch_metadata = {
+                "batch_id": "morning_baseline",
+                "operational_time": operational_time,
+                "ingestion_timestamp": datetime.now().isoformat(),
+                "data_version": "v1"
+            }
+            
+            # Seed locations first
+            await self.seed_locations(batch_metadata)
+            
+            # Seed baseline operational data
+            await self.seed_baseline_trucks(batch_metadata, base_timestamp)
+            await self.seed_baseline_orders(batch_metadata, base_timestamp)
+            await self.seed_baseline_inventory(batch_metadata, base_timestamp)
+            await self.seed_baseline_support_tickets(batch_metadata, base_timestamp)
+            await self.seed_analytics_events(batch_metadata)
+            
+            logger.info("✅ Baseline data seeding completed!")
+            
+        except Exception as e:
+            logger.error(f"❌ Baseline data seeding failed: {e}")
+            raise
+    
+    async def upsert_batch_data(self, data_type: str, documents: list, batch_id: str, operational_time: str):
+        """Upsert batch data with temporal metadata"""
+        try:
+            logger.info(f"📊 Upserting {len(documents)} {data_type} documents for batch {batch_id}")
+            
+            # Add temporal metadata to all documents
+            batch_metadata = {
+                "batch_id": batch_id,
+                "operational_time": operational_time,
+                "ingestion_timestamp": datetime.now().isoformat(),
+                "data_version": f"v{len(batch_id.split('_')) + 1}"
+            }
+            
+            # Add metadata to each document
+            for doc in documents:
+                doc.update(batch_metadata)
+                doc["operational_timestamp"] = datetime.now().replace(
+                    hour=int(operational_time.split(':')[0]),
+                    minute=int(operational_time.split(':')[1]),
+                    second=0,
+                    microsecond=0
+                ).isoformat()
+            
+            # Map data types to correct indices
+            index_name = data_type
+            if data_type == "fleet":
+                index_name = "trucks"  # Fleet data goes to trucks index
+            elif data_type == "support":
+                index_name = "support_tickets"  # Support data goes to support_tickets index
+            
+            # Upsert documents (update existing, insert new)
+            await self.es_service.bulk_index_documents(index_name, documents)
+            
+            logger.info(f"✅ Successfully upserted {len(documents)} {data_type} documents")
+            return {"status": "success", "recordCount": len(documents)}
+            
+        except Exception as e:
+            logger.error(f"❌ Batch upsert failed: {e}")
+            raise
+    
+    async def seed_locations(self, batch_metadata=None):
         """Seed locations data"""
         locations_data = [
             {
@@ -114,6 +190,11 @@ class DataSeeder:
                 "region": "Central"
             }
         ]
+        
+        # Add batch metadata if provided
+        if batch_metadata:
+            for location in locations_data:
+                location.update(batch_metadata)
         
         await self.es_service.bulk_index_documents("locations", locations_data)
         logger.info("✅ Seeded locations data")
@@ -513,7 +594,7 @@ class DataSeeder:
         await self.es_service.bulk_index_documents("support_tickets", tickets_data)
         logger.info("✅ Seeded support tickets data")
     
-    async def seed_analytics_events(self):
+    async def seed_analytics_events(self, batch_metadata=None):
         """Seed analytics events data with time-series data for charts"""
         import random
         from datetime import datetime, timedelta
@@ -663,8 +744,257 @@ class DataSeeder:
         
         events_data.extend(delivery_events)
         
+        # Add batch metadata if provided
+        if batch_metadata:
+            for event in events_data:
+                event.update(batch_metadata)
+        
         await self.es_service.bulk_index_documents("analytics_events", events_data)
         logger.info(f"✅ Seeded {len(events_data)} analytics events with time-series data")
+    
+    async def seed_baseline_trucks(self, batch_metadata, base_timestamp):
+        """Seed baseline morning truck data - all on time"""
+        trucks_data = [
+            {
+                "truck_id": "GI-58A",
+                "plate_number": "GI-58A",
+                "driver_id": "driver-001",
+                "driver_name": "John Kamau",
+                "current_location": {
+                    "id": "nairobi-station",
+                    "name": "Nairobi Station",
+                    "type": "station",
+                    "coordinates": {"lat": -1.2921, "lon": 36.8219},
+                    "address": "Nairobi, Kenya"
+                },
+                "destination": {
+                    "id": "mombasa-port",
+                    "name": "Mombasa Port",
+                    "type": "port",
+                    "coordinates": {"lat": -4.0435, "lon": 39.6682},
+                    "address": "Mombasa, Kenya"
+                },
+                "route": {
+                    "id": "nairobi-mombasa",
+                    "distance": 480.0,
+                    "estimated_duration": 420,
+                    "actual_duration": None
+                },
+                "status": "on_time",
+                "estimated_arrival": (base_timestamp + timedelta(hours=7)).isoformat() + "Z",
+                "last_update": base_timestamp.isoformat() + "Z",
+                "cargo": {
+                    "type": "General Cargo",
+                    "weight": 15000.0,
+                    "volume": 45.0,
+                    "description": "Mixed goods including electronics and household items",
+                    "priority": "medium"
+                }
+            },
+            {
+                "truck_id": "MO-84A",
+                "plate_number": "MO-84A",
+                "driver_id": "driver-002",
+                "driver_name": "Mary Wanjiku",
+                "current_location": {
+                    "id": "nakuru-station",
+                    "name": "Nakuru Station",
+                    "type": "station",
+                    "coordinates": {"lat": -0.3031, "lon": 36.0800},
+                    "address": "Nakuru, Kenya"
+                },
+                "destination": {
+                    "id": "nairobi-station",
+                    "name": "Nairobi Station",
+                    "type": "station",
+                    "coordinates": {"lat": -1.2921, "lon": 36.8219},
+                    "address": "Nairobi, Kenya"
+                },
+                "route": {
+                    "id": "nakuru-nairobi",
+                    "distance": 160.0,
+                    "estimated_duration": 180,
+                    "actual_duration": None
+                },
+                "status": "on_time",
+                "estimated_arrival": (base_timestamp + timedelta(hours=3)).isoformat() + "Z",
+                "last_update": base_timestamp.isoformat() + "Z",
+                "cargo": {
+                    "type": "Perishables",
+                    "weight": 8000.0,
+                    "volume": 25.0,
+                    "description": "Fresh produce including vegetables and fruits",
+                    "priority": "high"
+                }
+            },
+            {
+                "truck_id": "CE-57A",
+                "plate_number": "CE-57A",
+                "driver_id": "driver-003",
+                "driver_name": "Peter Ochieng",
+                "current_location": {
+                    "id": "kisumu-depot",
+                    "name": "Kisumu Depot",
+                    "type": "depot",
+                    "coordinates": {"lat": -0.0917, "lon": 34.7680},
+                    "address": "Kisumu, Kenya"
+                },
+                "destination": {
+                    "id": "eldoret-depot",
+                    "name": "Eldoret Depot",
+                    "type": "depot",
+                    "coordinates": {"lat": 0.5143, "lon": 35.2698},
+                    "address": "Eldoret, Kenya"
+                },
+                "route": {
+                    "id": "kisumu-eldoret",
+                    "distance": 120.0,
+                    "estimated_duration": 150,
+                    "actual_duration": None
+                },
+                "status": "on_time",
+                "estimated_arrival": (base_timestamp + timedelta(hours=2, minutes=30)).isoformat() + "Z",
+                "last_update": base_timestamp.isoformat() + "Z",
+                "cargo": {
+                    "type": "Construction Materials",
+                    "weight": 20000.0,
+                    "volume": 60.0,
+                    "description": "Cement bags and steel rods",
+                    "priority": "medium"
+                }
+            }
+        ]
+        
+        # Add batch metadata
+        for truck in trucks_data:
+            truck.update(batch_metadata)
+        
+        await self.es_service.bulk_index_documents("trucks", trucks_data)
+        logger.info("✅ Seeded baseline trucks data")
+    
+    async def seed_baseline_orders(self, batch_metadata, base_timestamp):
+        """Seed baseline morning orders - fresh orders"""
+        orders_data = [
+            {
+                "order_id": "ORD-001",
+                "customer": "Safaricom Ltd",
+                "customer_id": "CUST-001",
+                "status": "in_transit",
+                "value": 125000.0,
+                "items": "Network equipment including routers and switches",
+                "truck_id": "GI-58A",
+                "region": "Nairobi",
+                "priority": "high",
+                "created_at": (base_timestamp - timedelta(hours=1)).isoformat() + "Z",
+                "delivery_eta": (base_timestamp + timedelta(hours=7)).isoformat() + "Z"
+            },
+            {
+                "order_id": "ORD-002",
+                "customer": "Kenya Power",
+                "customer_id": "CUST-002",
+                "status": "pending",
+                "value": 89000.0,
+                "items": "Electrical transformers and power equipment",
+                "region": "Mombasa",
+                "priority": "medium",
+                "created_at": base_timestamp.isoformat() + "Z",
+                "delivery_eta": (base_timestamp + timedelta(hours=8)).isoformat() + "Z"
+            },
+            {
+                "order_id": "ORD-003",
+                "customer": "Equity Bank",
+                "customer_id": "CUST-003",
+                "status": "in_transit",
+                "value": 45000.0,
+                "items": "ATM machines and security equipment",
+                "truck_id": "MO-84A",
+                "region": "Central",
+                "priority": "urgent",
+                "created_at": (base_timestamp - timedelta(minutes=30)).isoformat() + "Z",
+                "delivery_eta": (base_timestamp + timedelta(hours=3)).isoformat() + "Z"
+            }
+        ]
+        
+        # Add batch metadata
+        for order in orders_data:
+            order.update(batch_metadata)
+        
+        await self.es_service.bulk_index_documents("orders", orders_data)
+        logger.info("✅ Seeded baseline orders data")
+    
+    async def seed_baseline_inventory(self, batch_metadata, base_timestamp):
+        """Seed baseline morning inventory - full stock"""
+        inventory_data = [
+            {
+                "item_id": "INV-001",
+                "name": "Diesel Fuel Premium Grade",
+                "category": "Fuel",
+                "quantity": 15000,
+                "unit": "liters",
+                "location": "Nairobi Depot",
+                "status": "in_stock",
+                "last_updated": base_timestamp.isoformat() + "Z"
+            },
+            {
+                "item_id": "INV-002",
+                "name": "Heavy Duty Truck Tires",
+                "category": "Parts",
+                "quantity": 50,
+                "unit": "pieces",
+                "location": "Mombasa Warehouse",
+                "status": "in_stock",
+                "last_updated": base_timestamp.isoformat() + "Z"
+            },
+            {
+                "item_id": "INV-003",
+                "name": "Synthetic Engine Oil 15W-40",
+                "category": "Maintenance",
+                "quantity": 25,
+                "unit": "bottles",
+                "location": "Kisumu Station",
+                "status": "in_stock",
+                "last_updated": base_timestamp.isoformat() + "Z"
+            },
+            {
+                "item_id": "INV-004",
+                "name": "Ceramic Brake Pads Heavy Duty",
+                "category": "Parts",
+                "quantity": 120,
+                "unit": "sets",
+                "location": "Nairobi Depot",
+                "status": "in_stock",
+                "last_updated": base_timestamp.isoformat() + "Z"
+            }
+        ]
+        
+        # Add batch metadata
+        for item in inventory_data:
+            item.update(batch_metadata)
+        
+        await self.es_service.bulk_index_documents("inventory", inventory_data)
+        logger.info("✅ Seeded baseline inventory data")
+    
+    async def seed_baseline_support_tickets(self, batch_metadata, base_timestamp):
+        """Seed baseline morning support tickets - minimal issues"""
+        tickets_data = [
+            {
+                "ticket_id": "TKT-001",
+                "customer": "General Inquiry",
+                "customer_id": "CUST-000",
+                "issue": "Route optimization inquiry",
+                "description": "Customer requesting information about optimal delivery routes for regular shipments",
+                "priority": "low",
+                "status": "open",
+                "created_at": (base_timestamp - timedelta(minutes=15)).isoformat() + "Z"
+            }
+        ]
+        
+        # Add batch metadata
+        for ticket in tickets_data:
+            ticket.update(batch_metadata)
+        
+        await self.es_service.bulk_index_documents("support_tickets", tickets_data)
+        logger.info("✅ Seeded baseline support tickets data")
 
 # Global instance
 data_seeder = DataSeeder()

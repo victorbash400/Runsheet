@@ -1,0 +1,5 @@
+truck_id,plate_number,driver_name,status,current_location,destination,estimated_arrival,cargo_type,cargo_description
+GI-58A,GI-58A,John Kamau,delayed,Highway A104 - Traffic Jam,Mombasa Port,2024-01-15T17:30:00Z,General Cargo,Network equipment - delayed due to traffic congestion
+MO-84A,MO-84A,Mary Wanjiku,on_time,Nairobi Station,Kinara Warehouse,2024-01-15T15:00:00Z,Perishables,Fresh produce - delivered successfully
+CE-57A,CE-57A,Peter Ochieng,delayed,Kisumu Depot,Eldoret Depot,2024-01-15T16:45:00Z,Construction Materials,Cement bags - mechanical issue resolved
+KA-123B,KA-123B,Sarah Njeri,on_time,Nakuru Station,Nairobi Station,2024-01-15T15:30:00Z,Electronics,Computer equipment for retail stores

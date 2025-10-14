@@ -288,9 +288,26 @@ class ElasticsearchService:
                 if "created_at" not in doc:
                     doc["created_at"] = datetime.now().isoformat()
                 
+                # Map index names to correct ID fields
+                id_field_map = {
+                    "trucks": "truck_id",
+                    "inventory": "item_id", 
+                    "support_tickets": "ticket_id",
+                    "orders": "order_id",
+                    "locations": "location_id",
+                    "analytics_events": "event_id"
+                }
+                
+                # Get the correct ID field for this index
+                id_field = id_field_map.get(index, f"{index[:-1]}_id")
+                doc_id = doc.get("id") or doc.get(id_field)
+                
+                if not doc_id:
+                    logger.warning(f"No ID found for document in {index} index. Available fields: {list(doc.keys())}")
+                
                 action = {
                     "_index": index,
-                    "_id": doc.get("id") or doc.get(f"{index[:-1]}_id"),  # Remove 's' from index name
+                    "_id": doc_id,
                     "_source": doc
                 }
                 actions.append(action)

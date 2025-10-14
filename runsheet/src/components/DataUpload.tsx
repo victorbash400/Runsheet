@@ -6,15 +6,24 @@ interface UploadResult {
   recordCount?: number;
   errors?: string[];
   dataType: string;
+  breakdown?: Record<string, number>;
 }
 
 export default function DataUpload() {
-  const [uploadMethod, setUploadMethod] = useState<'sheets' | 'csv'>('sheets');
+  const [uploadMethod, setUploadMethod] = useState<'sheets' | 'csv' | 'batch'>('sheets');
   const [sheetsUrl, setSheetsUrl] = useState('');
   const [dataType, setDataType] = useState('orders');
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  
+  // Batch upload options
+  const [selectedDataTypes, setSelectedDataTypes] = useState<string[]>(['fleet', 'orders']);
+  const [batchMode, setBatchMode] = useState<'all' | 'selective'>('selective');
+  
+  // Temporal data fields
+  const [batchId, setBatchId] = useState('afternoon_ops');
+  const [operationalTime, setOperationalTime] = useState('14:00');
 
   const handleSheetsUpload = async () => {
     if (!sheetsUrl.trim()) return;
@@ -23,7 +32,7 @@ export default function DataUpload() {
     setResult(null);
 
     try {
-      const response = await apiService.uploadFromSheets(sheetsUrl, dataType);
+      const response = await apiService.uploadTemporalSheets(sheetsUrl, dataType, batchId, operationalTime);
       setResult({
         status: 'success',
         recordCount: response.data.recordCount,
@@ -47,7 +56,7 @@ export default function DataUpload() {
     setResult(null);
 
     try {
-      const response = await apiService.uploadCSV(file, dataType);
+      const response = await apiService.uploadTemporalCSV(file, dataType, batchId, operationalTime);
       setResult({
         status: 'success',
         recordCount: response.data.recordCount,
@@ -93,6 +102,72 @@ export default function DataUpload() {
     }
   };
 
+  const handleDemoUpload = async (period: 'afternoon' | 'evening' | 'night') => {
+    setUploading(true);
+    setResult(null);
+
+    try {
+      const batchId = period === 'afternoon' ? 'afternoon_ops' : 
+                     period === 'evening' ? 'evening_ops' : 'night_shift';
+      const operationalTime = period === 'afternoon' ? '14:00' : 
+                             period === 'evening' ? '17:00' : '23:00';
+      
+      let response;
+      
+      if (uploadMethod === 'batch') {
+        if (batchMode === 'all') {
+          // Upload all data types
+          response = await apiService.uploadBatchTemporal(batchId, operationalTime);
+        } else {
+          // Upload selected data types
+          response = await apiService.uploadSelectiveTemporal(selectedDataTypes, batchId, operationalTime);
+        }
+        
+        setResult({
+          status: 'success',
+          recordCount: response.data.recordCount,
+          dataType: batchMode === 'all' ? 'all data types' : selectedDataTypes.join(', '),
+          breakdown: response.data.breakdown
+        });
+      } else {
+        // Single data type upload (existing behavior)
+        response = await apiService.uploadTemporalSheets(
+          'https://demo-sheets-url', 
+          dataType, 
+          batchId, 
+          operationalTime
+        );
+        
+        setResult({
+          status: 'success',
+          recordCount: response.data.recordCount,
+          dataType
+        });
+      }
+      
+      // Update the UI controls to match what was uploaded
+      setBatchId(batchId);
+      setOperationalTime(operationalTime);
+      
+    } catch (error) {
+      setResult({
+        status: 'error',
+        errors: [`Failed to simulate ${period} data upload. Please try again.`],
+        dataType: uploadMethod === 'batch' ? 'batch' : dataType
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDataTypeToggle = (type: string) => {
+    setSelectedDataTypes(prev => 
+      prev.includes(type) 
+        ? prev.filter(t => t !== type)
+        : [...prev, type]
+    );
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Compact Header */}
@@ -108,10 +183,10 @@ export default function DataUpload() {
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Upload Method</label>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => setUploadMethod('sheets')}
-                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     uploadMethod === 'sheets'
                       ? 'bg-blue-600 text-white'
                       : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -121,7 +196,7 @@ export default function DataUpload() {
                 </button>
                 <button
                   onClick={() => setUploadMethod('csv')}
-                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     uploadMethod === 'csv'
                       ? 'bg-blue-600 text-white'
                       : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -129,22 +204,145 @@ export default function DataUpload() {
                 >
                   CSV File
                 </button>
+                <button
+                  onClick={() => setUploadMethod('batch')}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    uploadMethod === 'batch'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Batch Upload
+                </button>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Data Type</label>
-              <select
-                value={dataType}
-                onChange={(e) => setDataType(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-              >
-                <option value="orders">Orders</option>
-                <option value="fleet">Fleet</option>
-                <option value="inventory">Inventory</option>
-                <option value="support">Support Tickets</option>
-              </select>
+            {uploadMethod !== 'batch' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Data Type</label>
+                <select
+                  value={dataType}
+                  onChange={(e) => setDataType(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                >
+                  <option value="orders">Orders</option>
+                  <option value="fleet">Fleet</option>
+                  <option value="inventory">Inventory</option>
+                  <option value="support">Support Tickets</option>
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Batch Mode</label>
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setBatchMode('all')}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        batchMode === 'all'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      All Data Types
+                    </button>
+                    <button
+                      onClick={() => setBatchMode('selective')}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        batchMode === 'selective'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      Select Types
+                    </button>
+                  </div>
+                  
+                  {batchMode === 'selective' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {['fleet', 'orders', 'inventory', 'support'].map(type => (
+                        <label key={type} className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedDataTypes.includes(type)}
+                            onChange={() => handleDataTypeToggle(type)}
+                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                          <span className="text-sm font-medium text-gray-700 capitalize">{type}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Temporal Data Controls */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h4 className="text-sm font-semibold text-blue-900 mb-3">📊 Temporal Data Settings</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-blue-800 mb-1">Batch ID</label>
+                <select
+                  value={batchId}
+                  onChange={(e) => setBatchId(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                >
+                  <option value="afternoon_ops">Afternoon Operations</option>
+                  <option value="evening_ops">Evening Operations</option>
+                  <option value="night_shift">Night Shift</option>
+                  <option value="weekend_ops">Weekend Operations</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-blue-800 mb-1">Operational Time</label>
+                <select
+                  value={operationalTime}
+                  onChange={(e) => setOperationalTime(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                >
+                  <option value="14:00">2:00 PM</option>
+                  <option value="17:00">5:00 PM</option>
+                  <option value="20:00">8:00 PM</option>
+                  <option value="23:00">11:00 PM</option>
+                </select>
+              </div>
             </div>
+            <p className="text-xs text-blue-700 mt-2">
+              💡 This simulates data updates from different operational periods (IoT sensors, field reports, etc.)
+            </p>
+          </div>
+
+          {/* Quick Demo Buttons */}
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <h4 className="text-sm font-semibold text-green-900 mb-3">🚀 Quick Demo</h4>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => handleDemoUpload('afternoon')}
+                disabled={uploading}
+                className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium transition-colors"
+              >
+                📊 Simulate Afternoon Data
+              </button>
+              <button
+                onClick={() => handleDemoUpload('evening')}
+                disabled={uploading}
+                className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium transition-colors"
+              >
+                🌅 Simulate Evening Data
+              </button>
+              <button
+                onClick={() => handleDemoUpload('night')}
+                disabled={uploading}
+                className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium transition-colors"
+              >
+                🌙 Simulate Night Shift
+              </button>
+            </div>
+            <p className="text-xs text-green-700 mt-2">
+              Click to automatically upload demo data without files (simulates Google Sheets integration)
+            </p>
           </div>
 
           {/* Google Sheets Upload */}
@@ -250,9 +448,17 @@ export default function DataUpload() {
                     </svg>
                     <span className="font-semibold text-green-900">Upload Successful</span>
                   </div>
-                  <p className="text-sm text-green-800 mb-3">
-                    Successfully imported {result.recordCount} {result.dataType} records
-                  </p>
+                  <div className="text-sm text-green-800 mb-3">
+                    <p>Successfully imported {result.recordCount} records for {result.dataType}</p>
+                    {result.breakdown && (
+                      <div className="mt-2 space-y-1">
+                        <p className="font-medium">Breakdown:</p>
+                        {Object.entries(result.breakdown).map(([type, count]) => (
+                          <p key={type} className="ml-2">• {type}: {count} records</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={() => setResult(null)}
                     className="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 font-medium transition-colors"

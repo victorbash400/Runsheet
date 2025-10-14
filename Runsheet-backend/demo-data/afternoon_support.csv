@@ -1,0 +1,4 @@
+ticket_id,customer,issue,description,priority,status
+TKT-002,Safaricom Ltd,Delivery delay notification,Truck GI-58A delayed due to traffic congestion on Nairobi-Mombasa highway. Customer requesting updated ETA and compensation options.,high,open
+TKT-003,Kenya Power,Inventory shortage alert,Low stock alert for truck tires at Mombasa warehouse. Requesting urgent restocking to avoid operational delays.,medium,open
+TKT-004,Equity Bank,Route optimization request,Customer requesting analysis of delivery routes to reduce costs and improve delivery times for regular shipments.,low,open

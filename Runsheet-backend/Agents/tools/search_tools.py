@@ -83,7 +83,21 @@ async def search_support_tickets(query: str) -> str:
     """
     try:
         logger.info(f"🔍 Searching support tickets for: {query}")
-        results = await elasticsearch_service.semantic_search("support_tickets", query, ["issue", "description"], 5)
+        
+        # First try semantic search
+        try:
+            results = await elasticsearch_service.semantic_search("support_tickets", query, ["issue", "description"], 5)
+        except Exception as search_error:
+            logger.warning(f"Semantic search failed, trying get_all_documents: {search_error}")
+            # Fallback to get all and filter
+            all_tickets = await elasticsearch_service.get_all_documents("support_tickets")
+            if query.lower() in ["all", "all support tickets", "support tickets"]:
+                results = all_tickets
+            else:
+                results = [ticket for ticket in all_tickets if 
+                          query.lower() in ticket.get('issue', '').lower() or 
+                          query.lower() in ticket.get('description', '').lower() or
+                          query.lower() in ticket.get('ticket_id', '').lower()]
         
         if not results:
             return f"No support tickets found for query: '{query}'"

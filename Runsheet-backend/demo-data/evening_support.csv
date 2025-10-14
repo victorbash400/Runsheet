@@ -1,0 +1,6 @@
+ticket_id,customer,issue,description,priority,status
+TKT-001,General Inquiry,Route optimization inquiry,Customer requesting information about optimal delivery routes - RESOLVED with route recommendations,low,resolved
+TKT-002,Safaricom Ltd,Delivery delay notification,Truck GI-58A delay resolved - delivery completed successfully. Customer satisfied with communication.,high,resolved
+TKT-004,Nakumatt Holdings,Urgent restocking request,Customer requesting priority delivery for weekend sales. Need truck assignment for tomorrow morning.,urgent,open
+TKT-005,East African Breweries,Equipment maintenance,Bottling machinery delivered but requires installation support. Technician scheduled for tomorrow.,medium,in_progress
+TKT-006,Kenya Railways,Night delivery coordination,Coordinating night delivery schedule to avoid daytime traffic. Special permits arranged.,medium,open

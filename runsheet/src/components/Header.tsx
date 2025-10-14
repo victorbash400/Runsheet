@@ -1,5 +1,4 @@
 import React from 'react';
-import { MessageCircle } from 'lucide-react';
 
 interface HeaderProps {
   onAIClick?: () => void;
@@ -38,13 +37,17 @@ export default function Header({ onAIClick }: HeaderProps) {
           
           {/* Header Actions - Right side */}
           <div className="flex items-center flex-1 justify-end">
-            {/* Chat Button */}
+            {/* Support Button */}
             <button
               onClick={onAIClick}
               className="flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-800 hover:bg-gray-100"
             >
-              <MessageCircle className="w-5 h-5" />
-              <span className="text-sm font-medium">Assistant</span>
+              <img 
+                src="/assistant.svg" 
+                alt="Support Assistant" 
+                className="w-6 h-6"
+              />
+              <span className="text-sm font-medium">Support</span>
             </button>
           </div>
         </div>

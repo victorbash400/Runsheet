@@ -345,9 +345,16 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
         {/* Header */}
         <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 p-4 flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">AI Assistant</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Powered by Gemini</p>
+            <div className="flex items-center space-x-2">
+              <img 
+                src="/assistant.svg" 
+                alt="Support Assistant" 
+                className="w-6 h-6"
+              />
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Support</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Powered by Gemini</p>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
               <button

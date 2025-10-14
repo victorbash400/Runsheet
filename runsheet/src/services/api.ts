@@ -169,7 +169,7 @@ class ApiService {
     return this.request<any[]>('/analytics/regional');
   }
 
-  // Data Upload
+  // Data Upload - Legacy methods (keeping for compatibility)
   async uploadFromSheets(url: string, dataType: string): Promise<ApiResponse<{ recordCount: number }>> {
     return this.request<{ recordCount: number }>('/data/upload/sheets', {
       method: 'POST',
@@ -186,6 +186,71 @@ class ApiService {
       method: 'POST',
       body: formData,
       headers: {}, // Let browser set Content-Type for FormData
+    });
+  }
+
+  // Temporal Data Upload - New methods for demo
+  async uploadTemporalCSV(
+    file: File, 
+    dataType: string, 
+    batchId: string, 
+    operationalTime: string
+  ): Promise<ApiResponse<{ recordCount: number; batch_id: string; operational_time: string }>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('data_type', dataType);
+    formData.append('batch_id', batchId);
+    formData.append('operational_time', operationalTime);
+
+    return this.request<{ recordCount: number; batch_id: string; operational_time: string }>('/upload/csv', {
+      method: 'POST',
+      body: formData,
+      headers: {}, // Let browser set Content-Type for FormData
+    });
+  }
+
+  async uploadTemporalSheets(
+    url: string, 
+    dataType: string, 
+    batchId: string, 
+    operationalTime: string
+  ): Promise<ApiResponse<{ recordCount: number; batch_id: string; operational_time: string }>> {
+    return this.request<{ recordCount: number; batch_id: string; operational_time: string }>('/upload/sheets', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        data_type: dataType, 
+        batch_id: batchId, 
+        operational_time: operationalTime,
+        sheets_url: url 
+      }),
+    });
+  }
+
+  async uploadBatchTemporal(
+    batchId: string, 
+    operationalTime: string
+  ): Promise<ApiResponse<{ recordCount: number; batch_id: string; operational_time: string; breakdown: Record<string, number> }>> {
+    return this.request<{ recordCount: number; batch_id: string; operational_time: string; breakdown: Record<string, number> }>('/upload/batch', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        batch_id: batchId, 
+        operational_time: operationalTime
+      }),
+    });
+  }
+
+  async uploadSelectiveTemporal(
+    dataTypes: string[],
+    batchId: string, 
+    operationalTime: string
+  ): Promise<ApiResponse<{ recordCount: number; batch_id: string; operational_time: string; breakdown: Record<string, number> }>> {
+    return this.request<{ recordCount: number; batch_id: string; operational_time: string; breakdown: Record<string, number> }>('/upload/selective', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        data_types: dataTypes,
+        batch_id: batchId, 
+        operational_time: operationalTime
+      }),
     });
   }
 

@@ -1,0 +1,6 @@
+truck_id,plate_number,driver_name,status,current_location,destination,estimated_arrival,cargo_type,cargo_description
+GI-58A,GI-58A,John Kamau,on_time,Mombasa Port,Nairobi Station,2024-01-16T08:00:00Z,General Cargo,Network equipment delivered - returning to base
+MO-84A,MO-84A,Mary Wanjiku,on_time,Kinara Warehouse,Thika Warehouse,2024-01-15T19:30:00Z,Empty,Delivery completed - heading to next pickup
+CE-57A,CE-57A,Peter Ochieng,on_time,Eldoret Depot,Kisumu Depot,2024-01-15T21:00:00Z,Construction Materials,Cement delivery completed - returning with new load
+KA-123B,KA-123B,Sarah Njeri,in_transit,Thika Road,Mombasa Port,2024-01-15T22:00:00Z,Electronics,Evening shift - computer equipment for export
+KBZ-456C,KBZ-456C,David Mwangi,on_time,Kisumu Depot,Nairobi Station,2024-01-15T23:30:00Z,Agricultural Products,Night delivery - fresh produce for morning markets

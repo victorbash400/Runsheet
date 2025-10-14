@@ -27,15 +27,16 @@ async def main():
         await data_seeder.clear_all_data()
         print("✅ Existing data cleared")
         
-        # Reseed with fresh data
-        print("\n🌱 Step 2: Reseeding with fresh data...")
-        await data_seeder.seed_all_data(force=True)
-        print("✅ Fresh data seeded")
+        # Reseed with baseline morning data
+        print("\n🌅 Step 2: Seeding baseline morning operations...")
+        await data_seeder.seed_baseline_data(operational_time="09:00")
+        print("✅ Baseline morning data seeded")
         
         print("\n" + "=" * 50)
         print("🎉 Cleanup completed successfully!")
-        print("📊 Your Elasticsearch indices now have clean, unique data")
-        print("🔄 Restart your frontend to see the changes")
+        print("📊 Your Elasticsearch indices now have baseline morning operations data")
+        print("🔄 Ready for temporal data demo - upload afternoon/evening data via frontend")
+        print("💡 Use the Data Upload component to simulate operational changes")
         
     except Exception as e:
         logger.error(f"❌ Cleanup failed: {e}")

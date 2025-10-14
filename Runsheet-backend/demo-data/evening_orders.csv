@@ -1,0 +1,5 @@
+order_id,customer,status,value,items,region,priority,truck_id
+ORD-004,Tusker Breweries,in_transit,210000,Brewing equipment including fermentation tanks,Nakuru,medium,KA-123B
+ORD-005,Nakumatt Holdings,pending,75000,Retail merchandise and electronics for store restocking,Nairobi,high,
+ORD-006,East African Breweries,delivered,180000,Bottling machinery and packaging equipment,Mombasa,medium,CE-57A
+ORD-001,Safaricom Ltd,delayed,125000,Network equipment including routers and switches,Nairobi,high,GI-58A

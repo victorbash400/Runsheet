@@ -1,0 +1,9 @@
+item_id,name,category,quantity,unit,location,status
+INV-001,Diesel Fuel Premium Grade,Fuel,8500,liters,Nairobi Depot,in_stock
+INV-002,Heavy Duty Truck Tires,Parts,15,pieces,Mombasa Warehouse,low_stock
+INV-003,Synthetic Engine Oil 15W-40,Maintenance,0,bottles,Kisumu Station,out_of_stock
+INV-004,Ceramic Brake Pads Heavy Duty,Parts,85,sets,Nairobi Depot,in_stock
+INV-005,Radiator Coolant Fluid,Maintenance,0,bottles,Mombasa Warehouse,out_of_stock
+INV-006,Air Filter Heavy Duty,Parts,30,pieces,Eldoret Depot,in_stock
+INV-007,Hydraulic Fluid Premium,Maintenance,12,bottles,Nairobi Depot,low_stock
+INV-008,LED Headlight Bulbs,Parts,8,sets,Thika Warehouse,low_stock

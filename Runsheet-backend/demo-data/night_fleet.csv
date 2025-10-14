@@ -1,0 +1,5 @@
+truck_id,plate_number,driver_name,status,current_location,destination,estimated_arrival,cargo_type,cargo_description
+KBZ-456C,KBZ-456C,David Mwangi,on_time,Nairobi Station,Mombasa Port,2024-01-16T04:00:00Z,Agricultural Products,Night shift - fresh produce for morning markets
+KCD-789D,KCD-789D,Grace Akinyi,in_transit,Mombasa Highway,Nairobi Station,2024-01-16T02:30:00Z,Textiles,Night delivery - clothing for retail stores
+GI-58A,GI-58A,John Kamau,resting,Mombasa Port,Nairobi Station,2024-01-16T08:00:00Z,Empty,Driver rest period - mandatory break
+MO-84A,MO-84A,Mary Wanjiku,on_time,Thika Warehouse,Nakuru Station,2024-01-16T01:00:00Z,Perishables,Night delivery - dairy products for morning distribution
