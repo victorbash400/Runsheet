@@ -1,0 +1,4 @@
+order_id,customer,status,value,items,region,priority,truck_id
+ORD-005,Safaricom Ltd,pending,95000,Network infrastructure equipment for afternoon deployment,Nairobi,high,GI-58A
+ORD-006,Kenya Power,in_transit,67000,Electrical components for afternoon installation,Mombasa,medium,MO-84A
+ORD-007,Equity Bank,delivered,45000,Banking equipment for branch installations,Kisumu,urgent,KA-123B

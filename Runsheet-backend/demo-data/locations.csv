@@ -1,0 +1,11 @@
+location_id,name,type,lat,lon,address
+nairobi-station,Nairobi Station,station,-1.2921,36.8219,"Nairobi, Kenya"
+mombasa-port,Mombasa Port,port,-4.0435,39.6682,"Mombasa, Kenya"
+kisumu-depot,Kisumu Depot,depot,-0.0917,34.7680,"Kisumu, Kenya"
+kinara-warehouse,Kinara Warehouse,warehouse,-1.3733,36.7516,"Kinara, Kenya"
+thika-warehouse,Thika Warehouse,warehouse,-1.0332,37.0692,"Thika, Kenya"
+nakuru-station,Nakuru Station,station,-0.3031,36.0800,"Nakuru, Kenya"
+eldoret-depot,Eldoret Depot,depot,0.5143,35.2698,"Eldoret, Kenya"
+highway-a104,Highway A104 - Traffic Jam,highway,-1.5,37.0,"A104 Highway, Kenya"
+mombasa-highway,Mombasa Highway,highway,-2.5,38.0,"Mombasa Highway, Kenya"
+thika-road,Thika Road,highway,-1.2,36.9,"Thika Road, Kenya"

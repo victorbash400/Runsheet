@@ -1,0 +1,7 @@
+item_id,name,category,quantity,unit,location,status
+INV-001,Diesel Fuel Premium Grade,Fuel,6000,liters,Nairobi Depot,low_stock
+INV-002,Heavy Duty Truck Tires,Parts,8,pieces,Mombasa Warehouse,low_stock
+INV-003,Synthetic Engine Oil 15W-40,Maintenance,0,bottles,Kisumu Station,out_of_stock
+INV-009,Night Vision Equipment,Safety,12,sets,Nairobi Depot,in_stock
+INV-010,Emergency Flares,Safety,25,pieces,All Depots,in_stock
+INV-011,Reflective Safety Vests,Safety,45,pieces,All Depots,in_stock

@@ -1,0 +1,4 @@
+ticket_id,customer,issue,description,priority,status
+TKT-007,Kenya Railways,Night delivery coordination,Coordinating night delivery schedule to avoid daytime traffic. Special permits arranged.,medium,open
+TKT-008,Fresh Produce Ltd,Temperature monitoring,Refrigerated truck temperature alarm triggered. Need immediate inspection and repair.,urgent,open
+TKT-009,Night Security Services,Route safety concern,Driver reported suspicious activity on Highway A109. Requesting security escort.,high,in_progress

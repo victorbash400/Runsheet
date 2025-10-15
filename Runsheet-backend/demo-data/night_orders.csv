@@ -1,0 +1,4 @@
+order_id,customer,status,value,items,region,priority,truck_id
+ORD-009,Fresh Produce Ltd,in_transit,35000,Perishable goods for night delivery to markets,Nairobi,urgent,KBZ-456C
+ORD-010,Kenya Railways,scheduled,180000,Railway maintenance equipment for night operations,Mombasa,high,KCD-789D
+ORD-011,Night Market Co,pending,25000,Fresh vegetables and fruits for morning markets,Kisumu,medium,

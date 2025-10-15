@@ -325,24 +325,84 @@ async def upload_sheets_temporal(request: TemporalUploadRequest):
 
 def convert_csv_row_to_document(row: dict, data_type: str) -> dict:
     """Convert CSV row to Elasticsearch document format"""
+    
+    def create_location_object(location_name: str, lat: float = None, lon: float = None):
+        """Create a proper location object by reading from locations CSV"""
+        import os
+        
+        # Load locations from CSV file
+        locations_path = os.path.join("demo-data", "locations.csv")
+        location_map = {}
+        
+        try:
+            if os.path.exists(locations_path):
+                with open(locations_path, 'r', encoding='utf-8') as file:
+                    locations_reader = csv.DictReader(file)
+                    for loc_row in locations_reader:
+                        location_map[loc_row['name']] = {
+                            "id": loc_row['location_id'],
+                            "name": loc_row['name'],
+                            "type": loc_row['type'],
+                            "coordinates": {"lat": float(loc_row['lat']), "lon": float(loc_row['lon'])},
+                            "address": loc_row['address']
+                        }
+        except Exception as e:
+            logger.error(f"Error loading locations CSV: {e}")
+        
+        # Try to find exact match first
+        if location_name in location_map:
+            return location_map[location_name]
+        
+        # If custom coordinates provided, create dynamic location
+        if lat is not None and lon is not None:
+            return {
+                "id": location_name.lower().replace(" ", "-").replace(",", ""),
+                "name": location_name,
+                "type": "location",
+                "coordinates": {"lat": lat, "lon": lon},
+                "address": f"{location_name}, Kenya"
+            }
+        
+        # Default fallback to Nairobi if no match
+        return {
+            "id": "nairobi-station",
+            "name": "Nairobi Station",
+            "type": "station", 
+            "coordinates": {"lat": -1.2921, "lon": 36.8219},
+            "address": "Nairobi, Kenya"
+        }
+    
     try:
         if data_type == "trucks" or data_type == "fleet":
+            # Get coordinates if available
+            lat = float(row.get("lat", 0)) if row.get("lat") else None
+            lon = float(row.get("lon", 0)) if row.get("lon") else None
+            
+            current_location_name = row.get("current_location", row.get("location", "Nairobi Station"))
+            destination_name = row.get("destination", "Mombasa Port")
+            
             return {
                 "truck_id": row.get("truck_id"),
                 "plate_number": row.get("plate_number", row.get("truck_id")),
+                "driver_id": f"driver-{row.get('truck_id', 'unknown')}",
                 "driver_name": row.get("driver_name", row.get("driver")),
                 "status": row.get("status", "on_time"),
-                "current_location": {
-                    "name": row.get("current_location", row.get("location")),
-                    "coordinates": {"lat": float(row.get("lat", 0)), "lon": float(row.get("lon", 0))} if row.get("lat") else None
-                },
-                "destination": {
-                    "name": row.get("destination")
+                "current_location": create_location_object(current_location_name, lat, lon),
+                "destination": create_location_object(destination_name),
+                "route": {
+                    "id": f"{current_location_name.lower().replace(' ', '-')}-{destination_name.lower().replace(' ', '-')}",
+                    "distance": 500.0,  # Default distance
+                    "estimated_duration": 300,  # Default 5 hours
+                    "actual_duration": None
                 },
                 "estimated_arrival": row.get("estimated_arrival", row.get("eta")),
+                "last_update": datetime.now().isoformat() + "Z",
                 "cargo": {
-                    "type": row.get("cargo_type", row.get("cargo")),
-                    "description": row.get("cargo_description", row.get("description"))
+                    "type": row.get("cargo_type", row.get("cargo", "General Cargo")),
+                    "weight": 10000.0,  # Default weight
+                    "volume": 30.0,     # Default volume
+                    "description": row.get("cargo_description", row.get("description", "Standard cargo")),
+                    "priority": "medium"
                 }
             }
         
@@ -385,369 +445,53 @@ def convert_csv_row_to_document(row: dict, data_type: str) -> dict:
         return None
 
 def generate_demo_sheets_data(data_type: str, batch_id: str) -> list:
-    """Generate demo data simulating Google Sheets import"""
-    base_time = datetime.now()
+    """Generate demo data by reading from CSV files"""
+    import os
     
     # Determine time period from batch_id
-    is_afternoon = "afternoon" in batch_id.lower()
-    is_evening = "evening" in batch_id.lower()
-    is_night = "night" in batch_id.lower()
+    time_period = "morning"  # default
+    if "afternoon" in batch_id.lower():
+        time_period = "afternoon"
+    elif "evening" in batch_id.lower():
+        time_period = "evening"
+    elif "night" in batch_id.lower():
+        time_period = "night"
     
-    if data_type == "trucks" or data_type == "fleet":
-        if is_afternoon:
-            return [
-                {
-                    "truck_id": "GI-58A",
-                    "plate_number": "GI-58A",
-                    "driver_name": "John Kamau",
-                    "status": "delayed",
-                    "current_location": {
-                        "name": "Highway A104 - Traffic Jam",
-                        "coordinates": {"lat": -1.5, "lon": 37.0}
-                    },
-                    "destination": {"name": "Mombasa Port"},
-                    "estimated_arrival": (base_time.replace(hour=17, minute=30)).isoformat() + "Z",
-                    "cargo": {
-                        "type": "General Cargo",
-                        "description": "Network equipment - delayed due to traffic"
-                    }
-                },
-                {
-                    "truck_id": "MO-84A",
-                    "plate_number": "MO-84A",
-                    "driver_name": "Mary Wanjiku",
-                    "status": "on_time",
-                    "current_location": {
-                        "name": "Nairobi Station",
-                        "coordinates": {"lat": -1.2921, "lon": 36.8219}
-                    },
-                    "destination": {"name": "Kinara Warehouse"},
-                    "estimated_arrival": (base_time.replace(hour=15, minute=0)).isoformat() + "Z",
-                    "cargo": {
-                        "type": "Perishables",
-                        "description": "Fresh produce - delivered successfully"
-                    }
-                }
-            ]
-        elif is_evening:
-            return [
-                {
-                    "truck_id": "KA-123B",
-                    "plate_number": "KA-123B",
-                    "driver_name": "Sarah Njeri",
-                    "status": "on_time",
-                    "current_location": {
-                        "name": "Thika Warehouse",
-                        "coordinates": {"lat": -1.0332, "lon": 37.0692}
-                    },
-                    "destination": {"name": "Mombasa Port"},
-                    "estimated_arrival": (base_time.replace(hour=22, minute=0)).isoformat() + "Z",
-                    "cargo": {
-                        "type": "Electronics",
-                        "description": "Evening shift - computer equipment"
-                    }
-                },
-                {
-                    "truck_id": "GI-58A",
-                    "plate_number": "GI-58A",
-                    "driver_name": "John Kamau",
-                    "status": "on_time",
-                    "current_location": {
-                        "name": "Mombasa Port",
-                        "coordinates": {"lat": -4.0435, "lon": 39.6682}
-                    },
-                    "destination": {"name": "Nairobi Station"},
-                    "estimated_arrival": (base_time.replace(hour=23, minute=30)).isoformat() + "Z",
-                    "cargo": {
-                        "type": "Empty",
-                        "description": "Delivery completed - returning to base"
-                    }
-                }
-            ]
-        elif is_night:
-            return [
-                {
-                    "truck_id": "KBZ-456C",
-                    "plate_number": "KBZ-456C",
-                    "driver_name": "David Mwangi",
-                    "status": "on_time",
-                    "current_location": {
-                        "name": "Nairobi Station",
-                        "coordinates": {"lat": -1.2921, "lon": 36.8219}
-                    },
-                    "destination": {"name": "Mombasa Port"},
-                    "estimated_arrival": (base_time.replace(hour=4, minute=0) + timedelta(days=1)).isoformat() + "Z",
-                    "cargo": {
-                        "type": "Agricultural Products",
-                        "description": "Night shift - fresh produce for morning markets"
-                    }
-                },
-                {
-                    "truck_id": "KCD-789D",
-                    "plate_number": "KCD-789D",
-                    "driver_name": "Grace Akinyi",
-                    "status": "in_transit",
-                    "current_location": {
-                        "name": "Mombasa Highway",
-                        "coordinates": {"lat": -2.5, "lon": 38.0}
-                    },
-                    "destination": {"name": "Nairobi Station"},
-                    "estimated_arrival": (base_time.replace(hour=2, minute=30) + timedelta(days=1)).isoformat() + "Z",
-                    "cargo": {
-                        "type": "Textiles",
-                        "description": "Night delivery - clothing for retail stores"
-                    }
-                },
-                {
-                    "truck_id": "GI-58A",
-                    "plate_number": "GI-58A",
-                    "driver_name": "John Kamau",
-                    "status": "resting",
-                    "current_location": {
-                        "name": "Mombasa Port - Rest Area",
-                        "coordinates": {"lat": -4.0435, "lon": 39.6682}
-                    },
-                    "destination": {"name": "Nairobi Station"},
-                    "estimated_arrival": (base_time.replace(hour=8, minute=0) + timedelta(days=1)).isoformat() + "Z",
-                    "cargo": {
-                        "type": "Empty",
-                        "description": "Driver rest period - mandatory break"
-                    }
-                }
-            ]
+    # Map data types to CSV file names
+    data_type_mapping = {
+        "trucks": "fleet",
+        "fleet": "fleet",
+        "orders": "orders", 
+        "inventory": "inventory",
+        "support_tickets": "support",
+        "support": "support"
+    }
     
-    elif data_type == "orders":
-        if is_afternoon:
-            return [
-                {
-                    "order_id": "ORD-005",
-                    "customer": "Safaricom Ltd",
-                    "status": "pending",
-                    "value": 95000.0,
-                    "items": "Network infrastructure equipment for afternoon deployment",
-                    "region": "Nairobi",
-                    "priority": "high",
-                    "truck_id": "GI-58A"
-                },
-                {
-                    "order_id": "ORD-006", 
-                    "customer": "Kenya Power",
-                    "status": "in_transit",
-                    "value": 67000.0,
-                    "items": "Electrical components for afternoon installation",
-                    "region": "Mombasa",
-                    "priority": "medium",
-                    "truck_id": "MO-84A"
-                }
-            ]
-        elif is_evening:
-            return [
-                {
-                    "order_id": "ORD-007",
-                    "customer": "Equity Bank",
-                    "status": "delivered",
-                    "value": 45000.0,
-                    "items": "Banking equipment delivered in evening shift",
-                    "region": "Kisumu",
-                    "priority": "urgent",
-                    "truck_id": "KA-123B"
-                },
-                {
-                    "order_id": "ORD-008",
-                    "customer": "Nakumatt Holdings",
-                    "status": "pending",
-                    "value": 120000.0,
-                    "items": "Retail merchandise for evening restocking",
-                    "region": "Nakuru",
-                    "priority": "medium"
-                }
-            ]
-        elif is_night:
-            return [
-                {
-                    "order_id": "ORD-009",
-                    "customer": "Fresh Produce Ltd",
-                    "status": "in_transit",
-                    "value": 35000.0,
-                    "items": "Perishable goods for night delivery to markets",
-                    "region": "Nairobi",
-                    "priority": "urgent",
-                    "truck_id": "KBZ-456C"
-                },
-                {
-                    "order_id": "ORD-010",
-                    "customer": "Kenya Railways",
-                    "status": "scheduled",
-                    "value": 180000.0,
-                    "items": "Railway maintenance equipment for night operations",
-                    "region": "Mombasa",
-                    "priority": "high",
-                    "truck_id": "KCD-789D"
-                }
-            ]
+    csv_data_type = data_type_mapping.get(data_type, data_type)
+    csv_filename = f"{time_period}_{csv_data_type}.csv"
+    csv_path = os.path.join("demo-data", csv_filename)
     
-    elif data_type == "inventory":
-        if is_afternoon:
-            return [
-                {
-                    "item_id": "INV-001",
-                    "name": "Diesel Fuel Premium Grade",
-                    "category": "Fuel",
-                    "quantity": 12000,  # Consumed 3000 liters
-                    "unit": "liters",
-                    "location": "Nairobi Depot",
-                    "status": "in_stock"
-                },
-                {
-                    "item_id": "INV-002",
-                    "name": "Heavy Duty Truck Tires",
-                    "category": "Parts",
-                    "quantity": 25,  # Used 25 tires
-                    "unit": "pieces",
-                    "location": "Mombasa Warehouse",
-                    "status": "low_stock"
-                },
-                {
-                    "item_id": "INV-003",
-                    "name": "Synthetic Engine Oil 15W-40",
-                    "category": "Maintenance",
-                    "quantity": 5,  # Used 20 bottles
-                    "unit": "bottles",
-                    "location": "Kisumu Station",
-                    "status": "low_stock"
-                }
-            ]
-        elif is_evening:
-            return [
-                {
-                    "item_id": "INV-001",
-                    "name": "Diesel Fuel Premium Grade",
-                    "category": "Fuel",
-                    "quantity": 8500,  # Further consumed
-                    "unit": "liters",
-                    "location": "Nairobi Depot",
-                    "status": "in_stock"
-                },
-                {
-                    "item_id": "INV-002",
-                    "name": "Heavy Duty Truck Tires",
-                    "category": "Parts",
-                    "quantity": 15,  # More used
-                    "unit": "pieces",
-                    "location": "Mombasa Warehouse",
-                    "status": "low_stock"
-                },
-                {
-                    "item_id": "INV-003",
-                    "name": "Synthetic Engine Oil 15W-40",
-                    "category": "Maintenance",
-                    "quantity": 0,  # Out of stock
-                    "unit": "bottles",
-                    "location": "Kisumu Station",
-                    "status": "out_of_stock"
-                }
-            ]
-        elif is_night:
-            return [
-                {
-                    "item_id": "INV-001",
-                    "name": "Diesel Fuel Premium Grade",
-                    "category": "Fuel",
-                    "quantity": 6000,  # Night operations consumption
-                    "unit": "liters",
-                    "location": "Nairobi Depot",
-                    "status": "low_stock"
-                },
-                {
-                    "item_id": "INV-009",
-                    "name": "Night Vision Equipment",
-                    "category": "Safety",
-                    "quantity": 12,
-                    "unit": "sets",
-                    "location": "Nairobi Depot",
-                    "status": "in_stock"
-                },
-                {
-                    "item_id": "INV-010",
-                    "name": "Emergency Flares",
-                    "category": "Safety",
-                    "quantity": 25,
-                    "unit": "pieces",
-                    "location": "All Depots",
-                    "status": "in_stock"
-                }
-            ]
+    # Check if CSV file exists
+    if not os.path.exists(csv_path):
+        logger.warning(f"CSV file not found: {csv_path}")
+        return []
     
-    elif data_type == "support_tickets" or data_type == "support":
-        if is_afternoon:
-            return [
-                {
-                    "ticket_id": "TKT-002",
-                    "customer": "Safaricom Ltd",
-                    "issue": "Delivery delay notification",
-                    "description": "Truck GI-58A delayed due to traffic congestion. Customer requesting updated ETA.",
-                    "priority": "high",
-                    "status": "open"
-                },
-                {
-                    "ticket_id": "TKT-003",
-                    "customer": "Kenya Power",
-                    "issue": "Inventory shortage alert",
-                    "description": "Low stock alert for truck tires at Mombasa warehouse. Requesting urgent restocking.",
-                    "priority": "medium",
-                    "status": "open"
-                }
-            ]
-        elif is_evening:
-            return [
-                {
-                    "ticket_id": "TKT-001",
-                    "customer": "General Inquiry",
-                    "issue": "Route optimization inquiry",
-                    "description": "Customer requesting information about optimal delivery routes - RESOLVED with route recommendations.",
-                    "priority": "low",
-                    "status": "resolved"
-                },
-                {
-                    "ticket_id": "TKT-004",
-                    "customer": "Nakumatt Holdings",
-                    "issue": "Urgent restocking request",
-                    "description": "Customer requesting priority delivery for weekend sales. Need truck assignment for tomorrow morning.",
-                    "priority": "urgent",
-                    "status": "open"
-                },
-                {
-                    "ticket_id": "TKT-005",
-                    "customer": "East African Breweries",
-                    "issue": "Equipment maintenance",
-                    "description": "Bottling machinery delivered but requires installation support. Technician scheduled for tomorrow.",
-                    "priority": "medium",
-                    "status": "in_progress"
-                }
-            ]
-        elif is_night:
-            return [
-                {
-                    "ticket_id": "TKT-007",
-                    "customer": "Kenya Railways",
-                    "issue": "Night delivery coordination",
-                    "description": "Coordinating night delivery schedule to avoid daytime traffic. Special permits arranged for oversized cargo.",
-                    "priority": "medium",
-                    "status": "open"
-                },
-                {
-                    "ticket_id": "TKT-008",
-                    "customer": "Fresh Produce Ltd",
-                    "issue": "Temperature monitoring alert",
-                    "description": "Night delivery of perishables requires continuous temperature monitoring. Driver training completed.",
-                    "priority": "high",
-                    "status": "in_progress"
-                }
-            ]
-    
-    # Log what we're trying to match for debugging
-    logger.info(f"🔍 Demo data generation: data_type={data_type}, batch_id={batch_id}")
-    logger.info(f"🔍 Time period flags: afternoon={is_afternoon}, evening={is_evening}, night={is_night}")
+    try:
+        # Read CSV and convert to documents
+        documents = []
+        with open(csv_path, 'r', encoding='utf-8') as file:
+            csv_reader = csv.DictReader(file)
+            for row in csv_reader:
+                doc = convert_csv_row_to_document(row, data_type)
+                if doc:
+                    documents.append(doc)
+        
+        logger.info(f"Loaded {len(documents)} records from {csv_filename}")
+        return documents
+        
+    except Exception as e:
+        logger.error(f"Error reading CSV file {csv_path}: {e}")
+        return []
     
     # If no specific time period matched, return empty list
     logger.warning(f"⚠️ No demo data generated for data_type={data_type}, batch_id={batch_id}")
