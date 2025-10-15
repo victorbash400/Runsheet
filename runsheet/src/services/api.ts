@@ -254,6 +254,27 @@ class ApiService {
     });
   }
 
+  // Demo Management
+  async resetDemo(): Promise<ApiResponse<{ state: string; message: string }>> {
+    return this.request<{ state: string; message: string }>('/demo/reset', {
+      method: 'POST',
+    });
+  }
+
+  async getDemoStatus(): Promise<{ current_state: string; total_trucks: number; success: boolean; timestamp: string }> {
+    const response = await fetch(`${API_BASE_URL}/demo/status`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
   // Real-time updates
   async subscribeToFleetUpdates(callback: (data: Truck[]) => void): Promise<() => void> {
     // WebSocket connection for real-time updates

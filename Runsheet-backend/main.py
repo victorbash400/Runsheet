@@ -148,6 +148,63 @@ async def clear_chat_endpoint(request: ClearChatRequest):
         logger.error(f"Error clearing chat: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/demo/reset")
+async def reset_demo():
+    """Reset demo to baseline morning state"""
+    try:
+        logger.info("Demo reset requested - clearing and reseeding data...")
+        
+        # Clear all existing data
+        await data_seeder.clear_all_data()
+        
+        # Reseed with baseline morning data
+        await data_seeder.seed_baseline_data(operational_time="09:00")
+        
+        return {
+            "success": True,
+            "message": "Demo reset to baseline morning operations",
+            "timestamp": datetime.now().isoformat(),
+            "state": "morning_baseline"
+        }
+        
+    except Exception as e:
+        logger.error(f"Demo reset failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Demo reset failed: {str(e)}")
+
+@app.get("/api/demo/status")
+async def get_demo_status():
+    """Get current demo state"""
+    try:
+        # Check what data exists to determine current state
+        trucks = await data_seeder.es_service.get_all_documents("trucks")
+        
+        # Analyze data to determine current time period
+        current_state = "unknown"
+        if trucks:
+            # Check batch_id or operational_time to determine state
+            sample_truck = trucks[0]
+            batch_id = sample_truck.get("batch_id", "morning_baseline")
+            
+            if "afternoon" in batch_id.lower():
+                current_state = "afternoon"
+            elif "evening" in batch_id.lower():
+                current_state = "evening"
+            elif "night" in batch_id.lower():
+                current_state = "night"
+            else:
+                current_state = "morning_baseline"
+        
+        return {
+            "success": True,
+            "current_state": current_state,
+            "total_trucks": len(trucks),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get demo status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/upload/csv")
 async def upload_csv_temporal(
     file: UploadFile = File(...),
