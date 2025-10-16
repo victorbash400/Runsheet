@@ -1,7 +1,7 @@
 fastapi
 uvicorn==0.24.0
 pydantic
-python-multipart==0.0.6
+python-multipart
 elasticsearch==8.11.0
 python-dotenv==1.0.0
 litellm
