@@ -27,7 +27,7 @@ export interface Location {
   type: 'station' | 'warehouse' | 'depot';
   coordinates: {
     lat: number;
-    lng: number;
+    lon: number;
   };
   address: string;
 }
