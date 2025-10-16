@@ -7,3 +7,5 @@ python-dotenv==1.0.0
 litellm
 strands-agents==1.8.0
 strands-agents-tools==0.2.7
+google-generativeai
+google-cloud-aiplatform

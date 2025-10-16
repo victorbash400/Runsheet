@@ -112,7 +112,8 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
 
   const streamChatResponse = async (userMessage: string) => {
     try {
-      const response = await fetch('http://localhost:8000/api/chat', {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+      const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -308,7 +309,8 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
 
   const clearChat = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/chat/clear', {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+      const response = await fetch(`${API_BASE_URL}/chat/clear`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

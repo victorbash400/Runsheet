@@ -100,7 +100,8 @@ export default function Analytics() {
     };
 
     const metricField = metricFieldMap[metric as keyof typeof metricFieldMap];
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/analytics/time-series?metric=${metricField}&timeRange=${range}`);
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+    const response = await fetch(`${API_BASE_URL}/analytics/time-series?metric=${metricField}&timeRange=${range}`);
     const result = await response.json();
 
     setChartData({
