@@ -111,19 +111,38 @@ class LogisticsAgent:
     def setup_gemini_credentials(self):
         """Setup Gemini credentials using the service account file"""
         try:
-            # Use the correct path to the credentials file
-            credentials_path = "C:/Users/Victo/Desktop/Runsheet/Runsheet-backend/ascendant-woods-462020-n0-78d818c9658e.json"
+            # Check if running in Cloud Run (has GOOGLE_APPLICATION_CREDENTIALS set)
+            if os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
+                logger.info("✅ Using Cloud Run service account credentials")
+                os.environ['GOOGLE_CLOUD_PROJECT'] = 'ascendant-woods-462020-n0'
+                return
             
-            if os.path.exists(credentials_path):
+            # Local development - try multiple possible paths
+            possible_paths = [
+                os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'),  # From env var
+                "ascendant-woods-462020-n0-78d818c9658e.json",    # Relative path
+                "./ascendant-woods-462020-n0-78d818c9658e.json",  # Current dir
+                "C:/Users/Victo/Desktop/Runsheet/Runsheet-backend/ascendant-woods-462020-n0-78d818c9658e.json"  # Absolute path
+            ]
+            
+            credentials_path = None
+            for path in possible_paths:
+                if path and os.path.exists(path):
+                    credentials_path = path
+                    break
+            
+            if credentials_path:
                 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
                 os.environ['GOOGLE_CLOUD_PROJECT'] = 'ascendant-woods-462020-n0'
-                logger.info("✅ Gemini credentials configured successfully")
+                logger.info(f"✅ Gemini credentials configured from: {credentials_path}")
             else:
-                raise FileNotFoundError(f"Credentials file not found: {credentials_path}")
+                logger.warning("⚠️ No service account file found, using default credentials")
+                os.environ['GOOGLE_CLOUD_PROJECT'] = 'ascendant-woods-462020-n0'
                 
         except Exception as e:
             logger.error(f"Failed to setup Gemini credentials: {e}")
-            raise
+            # Don't raise - let it try with default credentials
+            os.environ['GOOGLE_CLOUD_PROJECT'] = 'ascendant-woods-462020-n0'
 
     def clear_memory(self):
         """Clear the agent's conversation memory"""

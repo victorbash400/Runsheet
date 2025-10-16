@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Upload,
@@ -57,10 +57,10 @@ export default function Sidebar({ activeItem = 'Fleet', isCollapsed, onToggle, o
       <button
         onClick={onToggle}
         className="absolute -right-3 border rounded-full p-1.5 z-20 transition-all duration-200 shadow-sm"
-        style={{ 
-          backgroundColor: 'white', 
-          borderColor: 'rgba(35,35,35,0.12)', 
-          top: '20px' 
+        style={{
+          backgroundColor: 'white',
+          borderColor: 'rgba(35,35,35,0.12)',
+          top: '20px'
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.backgroundColor = '#232323';
@@ -75,8 +75,8 @@ export default function Sidebar({ activeItem = 'Fleet', isCollapsed, onToggle, o
           if (icon) icon.style.color = '#232323';
         }}
       >
-        <ChevronLeft 
-          className={`w-4 h-4 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`} 
+        <ChevronLeft
+          className={`w-4 h-4 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`}
           style={{ color: '#232323' }}
         />
       </button>
@@ -86,7 +86,7 @@ export default function Sidebar({ activeItem = 'Fleet', isCollapsed, onToggle, o
           {menuItems.map((item) => (
             <li key={item.id}>
               <div
-                className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200`}
+                className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} px-3 py-2.5 ${isCollapsed ? 'rounded-2xl' : 'rounded-lg'} cursor-pointer transition-all duration-200`}
                 style={{
                   color: activeItem.toLowerCase() === item.id ? 'white' : '#232323',
                   backgroundColor: activeItem.toLowerCase() === item.id ? '#232323' : 'transparent'
@@ -109,14 +109,14 @@ export default function Sidebar({ activeItem = 'Fleet', isCollapsed, onToggle, o
                 title={isCollapsed ? item.label : ''}
               >
                 <div className={`flex items-center ${isCollapsed ? '' : 'space-x-3'}`}>
-                  <item.icon 
-                    className={`w-5 h-5 transition-colors`} 
+                  <item.icon
+                    className={`w-5 h-5 transition-colors`}
                     style={{
                       color: activeItem.toLowerCase() === item.id ? 'white' : '#232323'
-                    }} 
+                    }}
                   />
                   {!isCollapsed && (
-                    <span 
+                    <span
                       className="font-medium text-sm transition-opacity duration-200"
                       style={{ opacity: isCollapsed ? 0 : 1 }}
                     >
@@ -131,14 +131,14 @@ export default function Sidebar({ activeItem = 'Fleet', isCollapsed, onToggle, o
       </nav>
 
       {/* User Profile - Expanded */}
-      <div 
+      <div
         className={`absolute bottom-4 left-4 right-4 transition-all duration-300 ${isCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
       >
-        <div 
+        <div
           className="flex items-center space-x-3 p-3 rounded-lg transition-colors"
           style={{ backgroundColor: 'rgba(255,255,255,0.6)' }}
         >
-          <div 
+          <div
             className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: '#232323' }}
           >
@@ -167,7 +167,7 @@ export default function Sidebar({ activeItem = 'Fleet', isCollapsed, onToggle, o
       </div>
 
       {/* User Profile - Collapsed */}
-      <div 
+      <div
         className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 transition-all duration-300 ${isCollapsed ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       >
         <button

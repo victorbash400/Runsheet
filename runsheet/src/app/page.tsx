@@ -18,7 +18,7 @@ export default function Home() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [activeMenuItem, setActiveMenuItem] = useState('fleet');
   const [selectedTruck, setSelectedTruck] = useState<Truck | null>(null);
   const [aiChatOpen, setAiChatOpen] = useState(false);
