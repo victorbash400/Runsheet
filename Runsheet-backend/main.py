@@ -25,7 +25,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",  # Next.js dev server
         "https://*.vercel.app",   # Vercel deployments
-        "https://runsheet.vercel.app"  # Your actual Vercel domain
+        "https://runsheet-xi.vercel.app",  # Your actual Vercel domain
+        "https://runsheet.vercel.app"  # Alternative domain
     ],
     allow_credentials=True,
     allow_methods=["*"],
